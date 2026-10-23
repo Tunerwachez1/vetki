@@ -2,6 +2,20 @@
 
 Рабочая первая версия личного пространства: заметки с папками, визуальные деревья, календарь и напоминания. Интерфейс на русском, тёмная тема. Данные хранятся локально, сетевых разрешений нет. При первом запуске пространство пустое: папки, заметки и холсты появляются только по действию пользователя.
 
+## Скачать приложение
+
+[Все APK в GitHub Releases](https://github.com/Tunerwachez1/vetki/releases/tag/v0.2.1).
+
+| Версия | Скачать | Изменения |
+| --- | --- | --- |
+| 0.2.1 | [APK](https://github.com/Tunerwachez1/vetki/releases/download/v0.2.1/vetki-0.2.1.apk) | Текущая версия: очистка кода и структуры проекта. |
+| 0.2.0 | [APK](https://github.com/Tunerwachez1/vetki/releases/download/v0.2.1/vetki-0.2.0.apk) | Обновлённый холст, четыре точки соединения, шаблоны и подсказки. |
+| 0.1.2 | [APK](https://github.com/Tunerwachez1/vetki/releases/download/v0.2.1/vetki-0.1.2.apk) | Зацикленный будильник и постепенное нарастание громкости. |
+| 0.1.1 | [APK](https://github.com/Tunerwachez1/vetki/releases/download/v0.2.1/vetki-0.1.1.apk) | Пустое пространство при первом запуске и новая мелодия. |
+| 0.1.0 | [APK](https://github.com/Tunerwachez1/vetki/releases/download/v0.2.1/vetki-0.1.0.apk) | Первая версия заметок, холстов, календаря и напоминаний. |
+
+APK подписаны локальным отладочным ключом. Исходники ветки `main` и тега `v0.2.1` соответствуют версии 0.2.1; предыдущие APK сохранены как архив готовых сборок.
+
 ## Стек
 
 Kotlin 2.1.21, Jetpack Compose / Material 3 (BOM 2025.06.01), ViewModel / StateFlow, Coroutines, Room 2.7.2, AlarmManager. AGP 8.11.1, Gradle 8.14.3, JDK 21. Android 8.0+ (minSdk 26), compile/targetSdk 35.
