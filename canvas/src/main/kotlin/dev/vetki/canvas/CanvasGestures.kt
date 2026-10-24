@@ -61,6 +61,13 @@ internal fun Modifier.canvasGestures(
                         last = pointer.position
                         continue
                     }
+                    if (transformed) {
+                        // Finger IDs and positions change when a pinch ends. Do not turn
+                        // the remaining finger into a new pan with the old finger's origin.
+                        event.changes.forEach { it.consume() }
+                        if (pressed.isEmpty()) break
+                        continue
+                    }
                     val distance = (pointer.position - down.position).getDistance()
                     if (candidate && pointer.uptimeMillis >= deadline) {
                         candidate = false
@@ -81,9 +88,6 @@ internal fun Modifier.canvasGestures(
                         panning = true
                         candidate = false
                         onTransform(pointer.position, delta, 1f)
-                        pointer.consume()
-                    } else if (transformed && pressed.isNotEmpty()) {
-                        onTransform(pointer.position, pointer.position - last, 1f)
                         pointer.consume()
                     }
                     last = pointer.position

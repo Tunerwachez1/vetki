@@ -140,4 +140,20 @@ class LocalizationTest {
             Language.wrap(context).resources.configuration.locales[0].language,
         )
     }
+
+    @Test
+    fun frameworkLanguageChangeInvalidatesCachedText() {
+        org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT >= 33)
+        select("ru")
+        assertEquals("Заметки", tr(StringsRes.string.notes))
+        context.getSystemService(android.app.LocaleManager::class.java).applicationLocales =
+            LocaleList.forLanguageTags("en")
+        val deadline = android.os.SystemClock.uptimeMillis() + 5000
+        while (
+            tr(StringsRes.string.notes) != "Notes" &&
+                android.os.SystemClock.uptimeMillis() < deadline
+        ) Thread.sleep(20)
+        assertEquals("Notes", tr(StringsRes.string.notes))
+        assertEquals("en", Strings.locale.language)
+    }
 }

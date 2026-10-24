@@ -1,14 +1,9 @@
 package dev.vetki.canvas
 
 import android.graphics.Bitmap
-import android.graphics.Paint
-import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
@@ -16,6 +11,7 @@ import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.semantics.*
@@ -23,10 +19,9 @@ import androidx.compose.ui.unit.*
 import dev.vetki.core.*
 import dev.vetki.i18n.R as StringsRes
 import dev.vetki.i18n.tr
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.math.*
+
+private val portSides = listOf("top", "bottom", "left", "right")
 
 private val colors =
     listOf(Color(0xFF4BC6B6), Color(0xFFC5A76B), Color(0xFF87A4C4), Color(0xFFAA94C2))
@@ -49,6 +44,7 @@ fun BoardCanvas(
     var connecting by remember(boardId) { mutableStateOf<Pair<String, String>?>(null) }
     val connect by rememberUpdatedState(onConnect)
     val density = LocalDensity.current.density
+    val locale = LocalConfiguration.current.locales.toLanguageTags()
     val haptics = LocalHapticFeedback.current
     var zoom by remember(boardId) { mutableFloatStateOf(.8f) }
     var pan by remember(boardId) { mutableStateOf(Offset.Unspecified) }
@@ -65,6 +61,21 @@ fun BoardCanvas(
     val grid by rememberUpdatedState(snapGrid)
     val objects by rememberUpdatedState(snapObjects)
     val imageLoader by rememberUpdatedState(loadImage)
+    val byId = remember(cards) { cards.associateBy { it.id } }
+    val ordinaryCards = remember(cards) { cards.filter { it.kind != "group" } }
+    val textRenderer = remember(boardId) { CanvasText() }
+    val gridRenderer = remember { CanvasGrid() }
+    val arrowPath = remember { Path() }
+    val arrowHead = remember { Path() }
+    val arrowStroke = remember(density) { Stroke(1.1f * density) }
+    val groupStroke =
+        remember(density) {
+            Stroke(
+                density,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8 * density, 5 * density)),
+            )
+        }
+
     fun camera() =
         if (pan.x.isFinite()) pan
         else
@@ -82,17 +93,52 @@ fun BoardCanvas(
         return pending[c.id] ?: Offset(c.x, c.y)
     }
     fun world(screen: Offset) = (screen - camera()) / (density * zoom)
+    fun sideLabel(side: String) =
+        when (side) {
+            "top" -> tr(StringsRes.string.at_the_top)
+            "bottom" -> tr(StringsRes.string.at_the_bottom)
+            "left" -> tr(StringsRes.string.on_the_left)
+            else -> tr(StringsRes.string.on_the_right)
+        }
+    fun choosePort(id: String, side: String) {
+        connecting = if (connecting == (id to side)) null else id to side
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+    }
+    fun hitPort(screen: Offset): Pair<String, String>? {
+        if (currentReadOnly || zoom < .55f) return null
+        val origin = camera()
+        val unit = density * zoom
+        val radius = 16 * density
+        var found: Pair<String, String>? = null
+        var closest = radius * radius
+        for (card in currentCards.asReversed()) {
+            if (card.kind == "group") continue
+            val p = position(card)
+            for (side in portSides) {
+                val port = WorldRect(p.x, p.y, card.width, card.height).port(side)
+                val dx = origin.x + port.x * unit - screen.x
+                val dy = origin.y + port.y * unit - screen.y
+                val distance = dx * dx + dy * dy
+                if (distance < closest) {
+                    closest = distance
+                    found = card.id to side
+                }
+            }
+        }
+        return found
+    }
     fun hit(screen: Offset): CanvasCard? {
         val p = world(screen)
-        return currentCards
-            .asReversed()
-            .sortedBy { it.kind == "group" }
-            .firstOrNull { c ->
-                val xy = position(c)
-                p.x in xy.x..xy.x + c.width &&
-                    p.y in xy.y..xy.y + (if (c.kind == "group") 34f else c.height)
-            }
+        // Preserve z-order without sorting the whole board for every touch.
+        fun contains(c: CanvasCard): Boolean {
+            val xy = position(c)
+            return p.x in xy.x..xy.x + c.width &&
+                p.y in xy.y..xy.y + (if (c.kind == "group") 34f else c.height)
+        }
+        return currentCards.lastOrNull { it.kind != "group" && contains(it) }
+            ?: currentCards.lastOrNull { it.kind == "group" && contains(it) }
     }
+
     fun selectCard(id: String) {
         val source = connecting
         if (source != null) {
@@ -102,7 +148,7 @@ fun BoardCanvas(
             }
         } else open(id)
     }
-    LaunchedEffect(readOnly, cards.map { it.id }) {
+    LaunchedEffect(readOnly, byId.keys) {
         if (readOnly || connecting?.first?.let { id -> cards.none { it.id == id } } == true)
             connecting = null
     }
@@ -139,11 +185,16 @@ fun BoardCanvas(
                 (dimensions.height - (bottom - top) * density * zoom) / 2 - top * density * zoom,
             )
     }
+    fun transform(anchor: Offset, delta: Offset, scale: Float) {
+        val origin = camera()
+        val next =
+            CanvasCamera(zoom, origin.x, origin.y)
+                .transform(WorldPoint(anchor.x, anchor.y), WorldPoint(delta.x, delta.y), scale)
+        pan = Offset(next.x, next.y)
+        zoom = next.zoom
+    }
     fun changeZoom(value: Float) {
-        val next = value.coerceIn(.15f, 2.5f)
-        val center = Offset(dimensions.width / 2, dimensions.height / 2)
-        pan = center - (center - camera()) * (next / zoom)
-        zoom = next
+        transform(Offset(dimensions.width / 2, dimensions.height / 2), Offset.Zero, value / zoom)
     }
     LaunchedEffect(boardId, dimensions, cards.isNotEmpty()) {
         if (!fitted && dimensions.width > 0 && cards.isNotEmpty()) {
@@ -152,21 +203,29 @@ fun BoardCanvas(
         }
     }
     LaunchedEffect(cards) {
+        textRenderer.retain(byId.keys)
         pending.keys.toList().forEach { id ->
-            val c = cards.firstOrNull { it.id == id }
+            val c = byId[id]
             val p = pending[id]!!
             if (c == null || (abs(c.x - p.x) < .5f && abs(c.y - p.y) < .5f)) pending.remove(id)
         }
     }
-    val visible =
-        cards.filter { c ->
-            val top = camera() + position(c) * density * zoom
-            top.x < dimensions.width &&
-                top.y < dimensions.height &&
-                top.x + c.width * density * zoom > 0 &&
-                top.y + c.height * density * zoom > 0
+    val detailed by remember(boardId) { derivedStateOf { zoom >= .55f } }
+    val visible by
+        remember(boardId, cards, density) {
+            derivedStateOf {
+                cards.filter { c ->
+                    val top = camera() + position(c) * density * zoom
+                    top.x < dimensions.width &&
+                        top.y < dimensions.height &&
+                        top.x + c.width * density * zoom > 0 &&
+                        top.y + c.height * density * zoom > 0
+                }
+            }
         }
-    val imageUris = visible.filter { it.kind == "image" }.mapNotNull { it.uri }.distinct().take(8)
+    val imageUris =
+        if (detailed) visible.filter { it.kind == "image" }.mapNotNull { it.uri }.distinct().take(8)
+        else emptyList()
     var images by remember(boardId) { mutableStateOf<Map<String, Bitmap>>(emptyMap()) }
     LaunchedEffect(imageUris) {
         images = buildMap { imageUris.forEach { uri -> imageLoader(uri)?.let { put(uri, it) } } }
@@ -181,7 +240,9 @@ fun BoardCanvas(
                     ::hit,
                     { currentReadOnly },
                     { point, card ->
-                        if (card != null) selectCard(card.id)
+                        val port = hitPort(point)
+                        if (port != null) choosePort(port.first, port.second)
+                        else if (card != null) selectCard(card.id)
                         else if (connecting != null) connecting = null
                         else {
                             val p = world(point)
@@ -195,28 +256,23 @@ fun BoardCanvas(
                     },
                     { delta -> preview = (preview ?: Offset.Zero) + delta / (density * zoom) },
                     ::finishDrag,
-                    { centroid, delta, scale ->
-                        val next = (zoom * scale).coerceIn(.15f, 2.5f)
-                        pan = centroid - (centroid - camera()) * (next / zoom) + delta
-                        zoom = next
-                    },
+                    ::transform,
                 )
         ) {
             val origin = camera()
             val unit = density * zoom
-            val spacing = 12f * unit
-            if (spacing >= 5) {
-                var dx = ((origin.x % spacing) + spacing) % spacing
-                while (dx < size.width) {
-                    var dy = ((origin.y % spacing) + spacing) % spacing
-                    while (dy < size.height) {
-                        drawCircle(Color(0xFF393939), .85f, Offset(dx, dy))
-                        dy += spacing
-                    }
-                    dx += spacing
-                }
+            drawIntoCanvas {
+                gridRenderer.draw(
+                    it.nativeCanvas,
+                    size.width,
+                    size.height,
+                    origin.x,
+                    origin.y,
+                    density,
+                    zoom,
+                )
             }
-            cards
+            visible
                 .filter { it.kind == "group" }
                 .forEach { c ->
                     val xy = origin + position(c) * unit
@@ -231,31 +287,11 @@ fun BoardCanvas(
                         xy,
                         Size(c.width * unit, c.height * unit),
                         CornerRadius(12 * unit),
-                        style =
-                            Stroke(
-                                density,
-                                pathEffect =
-                                    PathEffect.dashPathEffect(
-                                        floatArrayOf(8 * density, 5 * density)
-                                    ),
-                            ),
+                        style = groupStroke,
                     )
-                    drawIntoCanvas { canvas ->
-                        val paint =
-                            Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                color = android.graphics.Color.rgb(183, 178, 159)
-                                textSize = 13 * unit
-                                typeface = Typeface.DEFAULT_BOLD
-                            }
-                        canvas.nativeCanvas.drawText(
-                            c.title,
-                            xy.x + 14 * unit,
-                            xy.y + 24 * unit,
-                            paint,
-                        )
-                    }
+                    if (zoom >= .25f)
+                        drawIntoCanvas { textRenderer.group(it.nativeCanvas, c, xy.x, xy.y, unit) }
                 }
-            val byId = cards.associateBy { it.id }
             fun drawArrow(curve: ArrowCurve) {
                 fun screen(p: WorldPoint) = origin + Offset(p.x, p.y) * unit
                 val a = screen(curve.start)
@@ -270,12 +306,13 @@ fun BoardCanvas(
                 )
                     return
                 val path =
-                    Path().apply {
+                    arrowPath.apply {
+                        reset()
                         moveTo(a.x, a.y)
                         cubicTo(c1.x, c1.y, c2.x, c2.y, b.x, b.y)
                     }
                 val color = Color(0xFF8A8A87)
-                drawPath(path, color, style = Stroke(1.1f * density))
+                drawPath(path, color, style = arrowStroke)
                 val v = b - c2
                 val length = v.getDistance().coerceAtLeast(1f)
                 val direction = v / length
@@ -283,7 +320,8 @@ fun BoardCanvas(
                 val side =
                     Offset(-direction.y, direction.x) * 3.5f * density * zoom.coerceIn(.6f, 1f)
                 drawPath(
-                    Path().apply {
+                    arrowHead.apply {
+                        reset()
                         moveTo(b.x, b.y)
                         lineTo((back + side).x, (back + side).y)
                         lineTo((back - side).x, (back - side).y)
@@ -292,30 +330,28 @@ fun BoardCanvas(
                     color,
                 )
             }
-            cards
-                .filter { it.kind != "group" }
-                .forEach { source ->
-                    val p = position(source)
-                    val sourceRect = WorldRect(p.x, p.y, source.width, source.height)
-                    source.connections.forEach { link ->
-                        val target = byId[link.targetId] ?: return@forEach
-                        val q = position(target)
-                        drawArrow(
-                            connectionCurve(
-                                sourceRect,
-                                WorldRect(q.x, q.y, target.width, target.height),
-                                link.side,
-                            )
+            ordinaryCards.forEach { source ->
+                val p = position(source)
+                val sourceRect = WorldRect(p.x, p.y, source.width, source.height)
+                source.connections.forEach { link ->
+                    val target = byId[link.targetId] ?: return@forEach
+                    val q = position(target)
+                    drawArrow(
+                        connectionCurve(
+                            sourceRect,
+                            WorldRect(q.x, q.y, target.width, target.height),
+                            link.side,
                         )
-                    }
-                    val parent = byId[source.parentId]
-                    if (parent != null && parent.connections.none { it.targetId == source.id }) {
-                        val q = position(parent)
-                        drawArrow(
-                            arrowCurve(WorldRect(q.x, q.y, parent.width, parent.height), sourceRect)
-                        )
-                    }
+                    )
                 }
+                val parent = byId[source.parentId]
+                if (parent != null && parent.connections.none { it.targetId == source.id }) {
+                    val q = position(parent)
+                    drawArrow(
+                        arrowCurve(WorldRect(q.x, q.y, parent.width, parent.height), sourceRect)
+                    )
+                }
+            }
             visible
                 .filter { it.kind != "group" }
                 .forEach { card ->
@@ -340,160 +376,92 @@ fun BoardCanvas(
                     )
                     if (zoom < .25f) return@forEach
                     drawIntoCanvas { canvas ->
-                        val paint =
-                            Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                this.color = android.graphics.Color.rgb(232, 234, 232)
-                                textSize = 14 * unit
-                                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                            }
-                        fun lines(input: String, count: Int): List<String> {
-                            val result = mutableListOf<String>()
-                            var remaining = input.replace('\n', ' ')
-                            repeat(count) {
-                                if (remaining.isNotEmpty()) {
-                                    var n =
-                                        paint
-                                            .breakText(remaining, true, w - 26 * unit, null)
-                                            .coerceAtLeast(1)
-                                    if (n < remaining.length) {
-                                        val space = remaining.lastIndexOf(' ', n)
-                                        if (space > n / 2) n = space
-                                    }
-                                    var part = remaining.take(n)
-                                    remaining = remaining.drop(n).trimStart()
-                                    if (it == count - 1 && remaining.isNotEmpty())
-                                        part = part.dropLast(1) + "…"
-                                    result += part
-                                }
-                            }
-                            return result
-                        }
-                        val icon =
-                            when (card.kind) {
-                                "note" -> "▤ "
-                                "link" -> "↗ "
-                                "file" -> "▧ "
-                                else -> ""
-                            }
-                        lines((if (card.done) "✓ " else icon) + card.title, 2).forEachIndexed {
-                            i,
-                            line ->
-                            canvas.nativeCanvas.drawText(
-                                line,
-                                top.x + 13 * unit,
-                                top.y + (24 + i * 18) * unit,
-                                paint,
+                        textRenderer.card(
+                            canvas.nativeCanvas,
+                            card,
+                            top.x,
+                            top.y,
+                            unit,
+                            zoom >= .55f,
+                            images[card.uri],
+                        )
+                    }
+                }
+            if (!readOnly && zoom >= .55f)
+                visible
+                    .filter { it.kind != "group" }
+                    .forEach { card ->
+                        val p = position(card)
+                        portSides.forEach { side ->
+                            val port = WorldRect(p.x, p.y, card.width, card.height).port(side)
+                            val center = origin + Offset(port.x, port.y) * unit
+                            val selected = connecting == (card.id to side)
+                            val radius = if (selected) 6 * density else 4 * density
+                            drawCircle(
+                                if (selected) Color(0xFF4BC6B6) else Color(0xFF303737),
+                                radius,
+                                center,
                             )
-                        }
-                        val image = images[card.uri]
-                        if (card.kind == "image" && image != null) {
-                            val destination =
-                                android.graphics.RectF(
-                                    top.x + 10 * unit,
-                                    top.y + 52 * unit,
-                                    top.x + w - 10 * unit,
-                                    top.y + h - 12 * unit,
-                                )
-                            canvas.nativeCanvas.drawBitmap(
-                                image,
-                                null,
-                                destination,
-                                Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG),
-                            )
-                        } else {
-                            paint.textSize = 10.5f * unit
-                            paint.typeface = Typeface.DEFAULT
-                            paint.color = android.graphics.Color.rgb(163, 171, 167)
-                            lines(card.body, 2).forEachIndexed { i, line ->
-                                canvas.nativeCanvas.drawText(
-                                    line,
-                                    top.x + 13 * unit,
-                                    top.y + (65 + i * 15) * unit,
-                                    paint,
-                                )
-                            }
-                        }
-                        card.due?.let { due ->
-                            paint.color = android.graphics.Color.rgb(219, 185, 122)
-                            paint.textSize = 10 * unit
-                            val date =
-                                Instant.ofEpochMilli(due)
-                                    .atZone(ZoneId.systemDefault())
-                                    .format(DateTimeFormatter.ofPattern("dd.MM · HH:mm"))
-                            canvas.nativeCanvas.drawText(
-                                "◷ $date",
-                                top.x + 13 * unit,
-                                top.y + (card.height - 10) * unit,
-                                paint,
+                            drawCircle(
+                                Color(0xFF76B7AC),
+                                radius,
+                                center,
+                                style = Stroke(1.5f * density),
                             )
                         }
                     }
-                }
         }
         visible.forEach { card ->
-            val top = camera() + position(card) * density * zoom
-            Box(
-                Modifier.offset { IntOffset(top.x.roundToInt(), top.y.roundToInt()) }
-                    .size((card.width * zoom).dp, (card.height * zoom).dp)
-                    .semantics {
-                        contentDescription = tr(StringsRes.string.card_2, card.title)
-                        role = Role.Button
-                        onClick(
-                            label =
-                                if (connecting != null) tr(StringsRes.string.connect_to_card)
-                                else tr(StringsRes.string.open_card)
-                        ) {
-                            selectCard(card.id)
-                            true
+            key(card.id) {
+                val description =
+                    remember(card.title, locale) { tr(StringsRes.string.card_2, card.title) }
+                val actionLabels =
+                    remember(card.title, locale) {
+                        portSides.map { side ->
+                            tr(StringsRes.string.connect, sideLabel(side), card.title)
                         }
                     }
-            )
-        }
-        if (!readOnly)
-            visible
-                .filter { it.kind != "group" }
-                .forEach { card ->
-                    listOf("top", "bottom", "left", "right").forEach { side ->
-                        val p = position(card)
-                        val port = WorldRect(p.x, p.y, card.width, card.height).port(side)
-                        val center = camera() + Offset(port.x, port.y) * density * zoom
-                        val selected = connecting == (card.id to side)
-                        val sideLabel =
-                            when (side) {
-                                "top" -> tr(StringsRes.string.at_the_top)
-                                "bottom" -> tr(StringsRes.string.at_the_bottom)
-                                "left" -> tr(StringsRes.string.on_the_left)
-                                else -> tr(StringsRes.string.on_the_right)
+                val openLabel =
+                    remember(locale, connecting != null) {
+                        if (connecting != null) tr(StringsRes.string.connect_to_card)
+                        else tr(StringsRes.string.open_card)
+                    }
+                Box(
+                    Modifier.offset {
+                            val top = camera() + position(card) * density * zoom
+                            IntOffset(top.x.roundToInt(), top.y.roundToInt())
+                        }
+                        .layout { measurable, constraints ->
+                            val width =
+                                constraints.constrainWidth(
+                                    (card.width * density * zoom).roundToInt()
+                                )
+                            val height =
+                                constraints.constrainHeight(
+                                    (card.height * density * zoom).roundToInt()
+                                )
+                            val placeable = measurable.measure(Constraints.fixed(width, height))
+                            layout(width, height) { placeable.place(0, 0) }
+                        }
+                        .semantics {
+                            contentDescription = description
+                            role = Role.Button
+                            if (!readOnly && card.kind != "group")
+                                customActions =
+                                    portSides.mapIndexed { index, side ->
+                                        CustomAccessibilityAction(actionLabels[index]) {
+                                            choosePort(card.id, side)
+                                            true
+                                        }
+                                    }
+                            onClick(label = openLabel) {
+                                selectCard(card.id)
+                                true
                             }
-                        Box(
-                            Modifier.offset {
-                                    IntOffset(
-                                        (center.x - 16 * density).roundToInt(),
-                                        (center.y - 16 * density).roundToInt(),
-                                    )
-                                }
-                                .size(32.dp)
-                                .semantics {
-                                    contentDescription =
-                                        tr(StringsRes.string.connect, sideLabel, card.title)
-                                }
-                                .clickable(role = Role.Button) {
-                                    connecting = if (selected) null else card.id to side
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Box(
-                                Modifier.size(if (selected) 12.dp else 8.dp)
-                                    .background(
-                                        if (selected) Color(0xFF4BC6B6) else Color(0xFF303737),
-                                        CircleShape,
-                                    )
-                                    .border(1.5.dp, Color(0xFF76B7AC), CircleShape)
-                            )
                         }
-                    }
-                }
+                )
+            }
+        }
         if (connecting != null)
             Surface(
                 Modifier.align(Alignment.TopCenter)
@@ -522,30 +490,12 @@ fun BoardCanvas(
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
-        Surface(
+        ZoomControls(
+            { zoom },
+            ::changeZoom,
+            ::fit,
             Modifier.align(Alignment.BottomStart).padding(start = 12.dp, bottom = 12.dp),
-            color = Color(0xEE282C2B),
-            shape = MaterialTheme.shapes.large,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(
-                    onClick = { changeZoom(zoom * 1.25f) },
-                    modifier = Modifier.width(48.dp),
-                    contentPadding = PaddingValues(0.dp),
-                ) {
-                    Text("+")
-                }
-                Text("${(zoom*100).roundToInt()}%", style = MaterialTheme.typography.labelMedium)
-                TextButton(
-                    onClick = { changeZoom(zoom * .8f) },
-                    modifier = Modifier.width(48.dp),
-                    contentPadding = PaddingValues(0.dp),
-                ) {
-                    Text("−")
-                }
-                TextButton(onClick = { fit() }) { Text(tr(StringsRes.string.fit_all)) }
-            }
-        }
+        )
         FilledTonalIconButton(
             onClick = onHelp,
             modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).size(40.dp),
@@ -565,5 +515,34 @@ fun BoardCanvas(
                     color = Color(0xFFC5B48B),
                 )
             }
+    }
+}
+
+@Composable
+private fun ZoomControls(
+    zoom: () -> Float,
+    onZoom: (Float) -> Unit,
+    onFit: () -> Unit,
+    modifier: Modifier,
+) {
+    Surface(modifier, color = Color(0xEE282C2B), shape = MaterialTheme.shapes.large) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(
+                onClick = { onZoom(zoom() * 1.25f) },
+                modifier = Modifier.width(48.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text("+")
+            }
+            Text("${(zoom()*100).roundToInt()}%", style = MaterialTheme.typography.labelMedium)
+            TextButton(
+                onClick = { onZoom(zoom() * .8f) },
+                modifier = Modifier.width(48.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) {
+                Text("−")
+            }
+            TextButton(onClick = onFit) { Text(tr(StringsRes.string.fit_all)) }
+        }
     }
 }

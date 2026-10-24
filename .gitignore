@@ -12,3 +12,7 @@ local.properties
 keystore.properties
 .env
 .env.*
+
+# Python device-test driver
+__pycache__/
+*.py[cod]

@@ -35,13 +35,19 @@ object Language {
         } else {
             preferences(context).edit().putString("selected", language).apply()
         }
+        Strings.invalidate()
     }
 
     fun locale(context: Context): Locale {
         val selection = selected(context)
         val language =
-            if (selection == SYSTEM) Resources.getSystem().configuration.locales[0].language
-            else selection
+            if (selection == SYSTEM) {
+                val systemLocales =
+                    if (Build.VERSION.SDK_INT >= 33)
+                        context.getSystemService(LocaleManager::class.java).systemLocales
+                    else Resources.getSystem().configuration.locales
+                systemLocales.getFirstMatch(arrayOf("ru", "en"))?.language ?: "en"
+            } else selection
         return Locale.forLanguageTag(if (language == "ru") "ru" else "en")
     }
 
@@ -56,14 +62,20 @@ object Language {
 object Strings {
     private lateinit var application: Context
     @Volatile private var localized: Context? = null
+    @Volatile private var activeLocale: Locale? = null
 
     fun initialize(context: Context) {
         application = context.applicationContext
+        invalidate()
+    }
+
+    fun invalidate() {
+        activeLocale = null
         localized = null
     }
 
     val locale: Locale
-        get() = Language.locale(application)
+        get() = activeLocale ?: Language.locale(application).also { activeLocale = it }
 
     fun text(id: Int, vararg args: Any?): String {
         val language = locale.language
