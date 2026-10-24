@@ -154,6 +154,9 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
     var addLink by remember { mutableStateOf(false) }
     var templateBoard by remember { mutableStateOf<Board?>(null) }
     var about by remember { mutableStateOf(false) }
+    var calculatorOpen by rememberSaveable { mutableStateOf(false) }
+    var calculatorCardId by rememberSaveable { mutableStateOf<String?>(null) }
+    var calculatorDraft by rememberSaveable { mutableStateOf<String?>(null) }
     var chooseLanguage by remember { mutableStateOf(false) }
     var pendingPermissionReminder by remember { mutableStateOf<Reminder?>(null) }
     val notificationPermission =
@@ -287,6 +290,17 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
         insertX = point.x
         insertY = point.y
         when (action) {
+            "calculator" ->
+                vm.addContent(
+                    target.id,
+                    point,
+                    kind = "calculator",
+                    title = tr(StringsRes.string.calculator),
+                    body = tr(StringsRes.string.calc_unfinished),
+                    calculation = CalculationJson.encode(CalculationDraft()),
+                ) {
+                    calculatorCardId = it
+                }
             "text" -> vm.addContent(target.id, point) { cardId = it }
             "group" ->
                 vm.addContent(
@@ -320,6 +334,10 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
     fun openReference(c: Card) {
         try {
             when (c.kind) {
+                "calculator" -> {
+                    calculatorCardId = c.id
+                    cardId = null
+                }
                 "note" ->
                     if (state.notes.any { it.id == c.noteId && !it.folder }) {
                         noteId = c.noteId
@@ -377,6 +395,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                 tr(StringsRes.string.canvases),
                                 tr(StringsRes.string.calendar),
                                 tr(StringsRes.string.today),
+                                tr(StringsRes.string.tools),
                             )[tab],
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -447,6 +466,14 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                     },
                                 )
                             DropdownMenuItem(
+                                text = { Text(tr(StringsRes.string.calculator)) },
+                                leadingIcon = { Icon(Icons.Outlined.Calculate, null) },
+                                onClick = {
+                                    calculatorOpen = true
+                                    menu = false
+                                },
+                            )
+                            DropdownMenuItem(
                                 text = { Text(tr(StringsRes.string.export_backup)) },
                                 onClick = {
                                     vm.flush()
@@ -496,12 +523,14 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             Icons.Outlined.AccountTree,
                             Icons.Outlined.CalendarMonth,
                             Icons.Outlined.CheckBox,
+                            Icons.Outlined.Calculate,
                         )
                     listOf(
                             tr(StringsRes.string.notes),
                             tr(StringsRes.string.canvases),
                             tr(StringsRes.string.calendar),
                             tr(StringsRes.string.today),
+                            tr(StringsRes.string.tools),
                         )
                         .forEachIndexed { i, label ->
                             NavigationBarItem(
@@ -520,7 +549,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                 }
         },
         floatingActionButton = {
-            if (noteId == null && board?.readOnly != true)
+            if (noteId == null && board?.readOnly != true && (board != null || tab != 4))
                 FloatingActionButton(
                     onClick = {
                         when {
@@ -552,7 +581,11 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                         state.cards,
                         state.reminders,
                         listMode,
-                        { cardId = it },
+                        { id ->
+                            if (state.cards.firstOrNull { it.id == id }?.kind == "calculator")
+                                calculatorCardId = id
+                            else cardId = id
+                        },
                         vm::moveCard,
                         notes = state.notes,
                         attachments = vm.attachments,
@@ -578,6 +611,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                         ::newReminder,
                         vm::completeReminder,
                     )
+                tab == 4 -> ToolsScreen { calculatorOpen = true }
                 else ->
                     TodayScreen(state.reminders, state.boards, ::newReminder, vm::completeReminder)
             }
@@ -826,6 +860,29 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
             readOnly = board?.readOnly == true,
             onOpenReference = { openReference(card) },
         )
+    val calculationCard = state.cards.firstOrNull { it.id == calculatorCardId }
+    if (calculatorOpen || calculationCard != null)
+        key(calculationCard?.id ?: "standalone") {
+            CalculatorSheet(
+                sessionKey = calculationCard?.id ?: "standalone",
+                initial = calculationCard?.calculation ?: calculatorDraft,
+                onDismiss = {
+                    calculatorOpen = false
+                    calculatorCardId = null
+                },
+                onStoreDraft = { if (calculationCard == null) calculatorDraft = it },
+                card = calculationCard,
+                readOnly =
+                    calculationCard?.let { c ->
+                        state.boards.firstOrNull { it.id == c.boardId }?.readOnly
+                    } == true,
+                onSaveCard = vm::saveCard,
+                onCardSettings = {
+                    cardId = calculatorCardId
+                    calculatorCardId = null
+                },
+            )
+        }
     if (pickNote)
         NotePicker(state.notes, { pickNote = false }) { selected ->
             insertBoardId?.let { target ->

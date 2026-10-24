@@ -12,8 +12,8 @@ android {
             if (providers.gradleProperty("qa").orNull == "true") "dev.vetki.qa" else "dev.vetki"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.3.1"
+        versionCode = 8
+        versionName = "0.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["appLabel"] =
             if (providers.gradleProperty("qa").orNull == "true") "Vetki · QA"

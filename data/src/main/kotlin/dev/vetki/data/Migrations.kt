@@ -34,3 +34,10 @@ val MIGRATION_3_4 =
             db.execSQL("ALTER TABLE cards ADD COLUMN connections TEXT NOT NULL DEFAULT '[]'")
         }
     }
+
+val MIGRATION_4_5 =
+    object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE cards ADD COLUMN calculation TEXT")
+        }
+    }

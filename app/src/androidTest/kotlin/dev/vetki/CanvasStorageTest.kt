@@ -64,6 +64,90 @@ class CanvasStorageTest {
     }
 
     @Test
+    fun calculatorDraftSurvivesStorageBackupAndTemplate() = runBlocking {
+        val board = Board(title = "Calculator test")
+        db.dao().save(board)
+        val draft =
+            CalculationDraft(
+                mode = "salary",
+                monthly = true,
+                pay = "60000",
+                worked = "10",
+                planned = "20",
+                bonus = "2500",
+                deduction = "10",
+            )
+        val card =
+            Card(
+                boardId = board.id,
+                title = "Pay",
+                kind = "calculator",
+                body = "29250",
+                calculation = CalculationJson.encode(draft),
+            )
+        db.dao().save(card)
+        assertEquals(draft, CalculationJson.decode(db.dao().card(card.id)!!.calculation))
+        val template = db.dao().saveAsTemplate(board, "Calculation")
+        val copy = db.dao().fromTemplate("Copy", template.id)
+        assertEquals(
+            draft,
+            CalculationJson.decode(db.dao().allCards().single { it.boardId == copy.id }.calculation),
+        )
+        val other = Room.inMemoryDatabaseBuilder(context, VetkiDatabase::class.java).build()
+        try {
+            Backup.restore(other, Backup.export(db))
+            assertEquals(card, other.dao().card(card.id))
+            assertEquals(
+                draft,
+                CalculationJson.decode(
+                    other.dao().allCards().single { it.boardId == copy.id }.calculation
+                ),
+            )
+        } finally {
+            other.close()
+        }
+    }
+
+    @Test
+    fun invalidCalculatorBackupDoesNotWritePartialData() = runBlocking {
+        val board = Board(title = "Invalid calculator")
+        db.dao().save(board)
+        db.dao()
+            .save(
+                Card(
+                    boardId = board.id,
+                    title = "Invalid",
+                    kind = "calculator",
+                    calculation = "{\"mode\":\"unexpected\"}",
+                )
+            )
+        val other = Room.inMemoryDatabaseBuilder(context, VetkiDatabase::class.java).build()
+        try {
+            assertTrue(runCatching { Backup.restore(other, Backup.export(db)) }.isFailure)
+            assertTrue(other.dao().allBoards().isEmpty())
+        } finally {
+            other.close()
+        }
+    }
+
+    @Test
+    fun legacyVersionTwoBackupStillRestoresWithoutCalculationField() = runBlocking {
+        val board = Board(title = "Legacy")
+        val card = Card(boardId = board.id, title = "Existing text", body = "Keep me")
+        db.dao().save(board)
+        db.dao().save(card)
+        val payload = JSONObject(Backup.export(db)).put("version", 2)
+        payload.getJSONArray("cards").getJSONObject(0).remove("calculation")
+        val other = Room.inMemoryDatabaseBuilder(context, VetkiDatabase::class.java).build()
+        try {
+            Backup.restore(other, payload.toString())
+            assertEquals(card, other.dao().card(card.id))
+        } finally {
+            other.close()
+        }
+    }
+
+    @Test
     fun emptyCanvasReallyStartsEmpty() = runBlocking {
         db.dao().createBoard("Чистый лист", "empty")
         assertTrue(db.dao().allCards().isEmpty())
@@ -199,12 +283,13 @@ class CanvasStorageTest {
         }
         val migrated =
             Room.databaseBuilder(context, VetkiDatabase::class.java, name)
-                .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
         try {
             assertEquals("Не потерять", migrated.dao().note("keep")!!.body)
             assertEquals(41f, migrated.dao().card("card")!!.x, .01f)
             assertEquals("text", migrated.dao().card("card")!!.kind)
+            assertNull(migrated.dao().card("card")!!.calculation)
             assertFalse(migrated.dao().board("board")!!.readOnly)
             assertTrue(migrated.dao().allTemplates().isEmpty())
         } finally {

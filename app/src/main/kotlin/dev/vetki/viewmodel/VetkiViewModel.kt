@@ -186,6 +186,7 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
         noteId: String? = null,
         uri: String? = null,
         mime: String? = null,
+        calculation: String? = null,
         done: (String) -> Unit = {},
     ) = launch {
         boardLock.withLock {
@@ -204,6 +205,7 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
                     noteId = noteId,
                     uri = uri,
                     mime = mime,
+                    calculation = calculation,
                     width = width,
                     height = height,
                 )

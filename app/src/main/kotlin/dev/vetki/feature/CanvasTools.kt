@@ -44,6 +44,7 @@ fun CanvasActionMenu(
                     onClick = { choose(action) },
                 )
             }
+            item(tr(StringsRes.string.calculator), Icons.Outlined.Calculate, "calculator")
             item(tr(StringsRes.string.add_card), Icons.Outlined.CropLandscape, "text")
             item(tr(StringsRes.string.from_my_notes), Icons.Outlined.Description, "note")
             item(tr(StringsRes.string.image_or_file), Icons.Outlined.AttachFile, "file")

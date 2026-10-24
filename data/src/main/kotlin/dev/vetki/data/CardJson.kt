@@ -37,6 +37,7 @@ object CardJson {
             .put("noteId", c.noteId)
             .put("uri", c.uri)
             .put("mime", c.mime)
+            .put("calculation", c.calculation)
             .put("connections", JSONArray(c.connections))
             .put("groupId", c.groupId)
             .put("width", c.width)
@@ -58,6 +59,7 @@ object CardJson {
             noteId = optional("noteId"),
             uri = optional("uri"),
             mime = optional("mime"),
+            calculation = optional("calculation"),
             groupId = optional("groupId"),
             width = o.optDouble("width", 190.0).toFloat(),
             height = o.optDouble("height", 112.0).toFloat(),

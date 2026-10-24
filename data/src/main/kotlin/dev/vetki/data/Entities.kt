@@ -55,6 +55,7 @@ data class Card(
     @ColumnInfo(defaultValue = "190.0") val width: Float = 190f,
     @ColumnInfo(defaultValue = "112.0") val height: Float = 112f,
     @ColumnInfo(defaultValue = "'[]'") val connections: String = "[]",
+    val calculation: String? = null,
 )
 
 @Entity(tableName = "reminders", indices = [Index("cardId"), Index("at")])

@@ -11,7 +11,7 @@ object Backup {
             val dao = db.dao()
             JSONObject()
                 .put("format", "vetki")
-                .put("version", 2)
+                .put("version", 3)
                 .put("createdAt", System.currentTimeMillis())
                 .put(
                     "notes",
@@ -123,7 +123,7 @@ object Backup {
     suspend fun restore(db: VetkiDatabase, text: String, attachments: AttachmentStore? = null) {
         require(text.length < 40_000_000) { tr(StringsRes.string.the_backup_is_too_large) }
         val root = JSONObject(text)
-        require(root.getString("format") == "vetki" && root.getInt("version") in 1..2) {
+        require(root.getString("format") == "vetki" && root.getInt("version") in 1..3) {
             tr(StringsRes.string.unsupported_backup_format)
         }
         fun objects(name: String): List<JSONObject> =
@@ -224,7 +224,8 @@ object Backup {
                     tr(StringsRes.string.invalid_card_connection)
                 }
             }
-            require(c.kind in setOf("text", "note", "image", "file", "link", "group"))
+            if (c.kind == "calculator") CalculationJson.decode(c.calculation)
+            require(c.kind in setOf("text", "note", "image", "file", "link", "group", "calculator"))
             require(
                 c.groupId == null ||
                     byCard[c.groupId]?.let {
@@ -247,7 +248,12 @@ object Backup {
         templates.forEach { t ->
             require(
                 CardJson.list(t.payload).all {
-                    it.x.isFinite() &&
+                    (it.kind != "calculator" ||
+                        run {
+                            CalculationJson.decode(it.calculation)
+                            true
+                        }) &&
+                        it.x.isFinite() &&
                         it.y.isFinite() &&
                         it.width.isFinite() &&
                         it.height.isFinite()

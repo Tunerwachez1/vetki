@@ -501,7 +501,7 @@ fun CardSheet(
                         readOnly = readOnly,
                     )
                 }
-            if (card.kind in setOf("note", "image", "file", "link"))
+            if (card.kind in setOf("note", "image", "file", "link", "calculator"))
                 OutlinedButton(
                     onClick = {
                         if (!readOnly) onSave(draft())
@@ -512,7 +512,8 @@ fun CardSheet(
                     Icon(Icons.Outlined.OpenInNew, null)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (card.kind == "note") tr(StringsRes.string.open_note)
+                        if (card.kind == "calculator") tr(StringsRes.string.calculator)
+                        else if (card.kind == "note") tr(StringsRes.string.open_note)
                         else if (card.kind == "link") tr(StringsRes.string.open_website)
                         else tr(StringsRes.string.open_file)
                     )
