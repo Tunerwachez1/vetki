@@ -16,4 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Vetki"
 
-include(":app", ":core", ":data", ":canvas", ":reminders")
+include(":app", ":core", ":data", ":canvas", ":reminders", ":i18n")

@@ -1,6 +1,8 @@
 package dev.vetki
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -27,6 +29,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.vetki.core.*
 import dev.vetki.data.*
 import dev.vetki.feature.*
+import dev.vetki.i18n.Language
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import dev.vetki.reminders.AlarmPlaybackState
 import dev.vetki.ui.*
 import dev.vetki.viewmodel.*
@@ -34,6 +39,10 @@ import java.time.LocalDate
 import kotlinx.coroutines.*
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(Language.wrap(newBase))
+    }
+
     private val vm: VetkiViewModel by viewModels()
     private var incoming by mutableStateOf<Intent?>(null)
 
@@ -145,6 +154,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
     var addLink by remember { mutableStateOf(false) }
     var templateBoard by remember { mutableStateOf<Board?>(null) }
     var about by remember { mutableStateOf(false) }
+    var chooseLanguage by remember { mutableStateOf(false) }
     var pendingPermissionReminder by remember { mutableStateOf<Reminder?>(null) }
     val notificationPermission =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -153,7 +163,10 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
             if (!granted)
                 scope.launch {
                     snackbar.showSnackbar(
-                        "Напоминание сохранено, но уведомления запрещены. Включи их в настройках Android."
+                        tr(
+                            StringsRes.string
+                                .reminder_saved_but_notifications_are_disabled_enable_them_in
+                        )
                     )
                 }
         }
@@ -169,11 +182,11 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             val text = Backup.export(vm.database, vm.attachments)
                             context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use {
                                 it.write(text)
-                            } ?: error("Не удалось открыть файл")
+                            } ?: error(tr(StringsRes.string.could_not_open_the_file))
                         }
-                        snackbar.showSnackbar("Резервная копия сохранена")
+                        snackbar.showSnackbar(tr(StringsRes.string.backup_saved))
                     } catch (e: Exception) {
-                        snackbar.showSnackbar("Ошибка экспорта: ${e.message}")
+                        snackbar.showSnackbar(tr(StringsRes.string.export_failed, e.message))
                     }
                 }
         }
@@ -196,19 +209,21 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                             if (count < 0) break
                                             b.append(buffer, 0, count)
                                             require(b.length < 40_000_000) {
-                                                "Файл слишком большой"
+                                                tr(StringsRes.string.the_file_is_too_large)
                                             }
                                         }
                                         b.toString()
-                                    } ?: error("Не удалось прочитать файл")
+                                    } ?: error(tr(StringsRes.string.could_not_read_the_file))
                             val old = vm.dao.allReminders()
                             Backup.restore(vm.database, text, vm.attachments)
                             old.forEach { vm.scheduler.cancel(it.id) }
                             vm.scheduler.restore()
                         }
-                        snackbar.showSnackbar("Данные из копии добавлены")
+                        snackbar.showSnackbar(tr(StringsRes.string.backup_data_added))
                     } catch (e: Exception) {
-                        snackbar.showSnackbar("Копия не загружена: ${e.message}")
+                        snackbar.showSnackbar(
+                            tr(StringsRes.string.could_not_restore_the_backup, e.message)
+                        )
                     }
                 }
         }
@@ -231,7 +246,9 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             cardId = it
                         }
                     } catch (e: Exception) {
-                        snackbar.showSnackbar(e.message ?: "Не удалось добавить файл")
+                        snackbar.showSnackbar(
+                            e.message ?: tr(StringsRes.string.could_not_add_the_file)
+                        )
                     }
                 }
         }
@@ -276,9 +293,8 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                     target.id,
                     point,
                     kind = "group",
-                    title = "Новая группа",
-                    body =
-                        "Перемести карточки внутрь рамки. Удерживай заголовок группы, чтобы двигать их вместе.",
+                    title = tr(StringsRes.string.new_group),
+                    body = tr(StringsRes.string.move_cards_inside_the_frame_hold_the_group_title),
                 ) {
                     cardId = it
                 }
@@ -288,7 +304,9 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
             "paste" -> {
                 val text = clipboard.getText()?.text?.trim().orEmpty()
                 if (text.isBlank())
-                    scope.launch { snackbar.showSnackbar("В буфере пока нет текста") }
+                    scope.launch {
+                        snackbar.showSnackbar(tr(StringsRes.string.the_clipboard_has_no_text))
+                    }
                 else
                     vm.addContent(
                         target.id,
@@ -309,7 +327,10 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                     } else
                         scope.launch {
                             snackbar.showSnackbar(
-                                "Исходная заметка удалена; её сохранённый текст остался в карточке"
+                                tr(
+                                    StringsRes.string
+                                        .the_original_note_was_deleted_its_saved_text_is
+                                )
                             )
                         }
                 "link" -> {
@@ -332,7 +353,10 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
         } catch (e: Exception) {
             scope.launch {
                 snackbar.showSnackbar(
-                    "Не удалось открыть: ${e.message?:"подходящее приложение не найдено"}"
+                    tr(
+                        StringsRes.string.could_not_open,
+                        e.message ?: tr(StringsRes.string.no_compatible_app_found),
+                    )
                 )
             }
         }
@@ -348,7 +372,12 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                     Text(
                         note?.title
                             ?: board?.title
-                            ?: listOf("Заметки", "Холсты", "Календарь", "Сегодня")[tab],
+                            ?: listOf(
+                                tr(StringsRes.string.notes),
+                                tr(StringsRes.string.canvases),
+                                tr(StringsRes.string.calendar),
+                                tr(StringsRes.string.today),
+                            )[tab],
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     )
@@ -365,7 +394,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                 }
                             }
                         ) {
-                            Icon(Icons.Outlined.ArrowBack, "Назад")
+                            Icon(Icons.Outlined.ArrowBack, tr(StringsRes.string.back))
                         }
                 },
                 actions = {
@@ -374,18 +403,19 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             Icon(
                                 if (listMode) Icons.Outlined.AccountTree
                                 else Icons.Outlined.FormatListBulleted,
-                                if (listMode) "Показать холст" else "Показать списком",
+                                if (listMode) tr(StringsRes.string.show_canvas)
+                                else tr(StringsRes.string.show_list),
                             )
                         }
                     }
                     Box {
                         IconButton(onClick = { menu = true }) {
-                            Icon(Icons.Outlined.MoreVert, "Меню")
+                            Icon(Icons.Outlined.MoreVert, tr(StringsRes.string.menu))
                         }
                         DropdownMenu(menu, { menu = false }) {
                             if (board != null) {
                                 DropdownMenuItem(
-                                    text = { Text("Выровнять дерево") },
+                                    text = { Text(tr(StringsRes.string.arrange_tree)) },
                                     enabled = !board.readOnly,
                                     onClick = {
                                         vm.layoutBoard(board.id)
@@ -393,7 +423,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                     },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Переименовать холст") },
+                                    text = { Text(tr(StringsRes.string.rename_canvas)) },
                                     onClick = {
                                         renameBoard = board
                                         menu = false
@@ -402,7 +432,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             }
                             if (board != null)
                                 DropdownMenuItem(
-                                    text = { Text("Сохранить как шаблон") },
+                                    text = { Text(tr(StringsRes.string.save_as_template)) },
                                     onClick = {
                                         templateBoard = board
                                         menu = false
@@ -410,14 +440,14 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                 )
                             if (note != null)
                                 DropdownMenuItem(
-                                    text = { Text("Действия с заметкой") },
+                                    text = { Text(tr(StringsRes.string.note_actions)) },
                                     onClick = {
                                         noteActions = note
                                         menu = false
                                     },
                                 )
                             DropdownMenuItem(
-                                text = { Text("Сохранить резервную копию") },
+                                text = { Text(tr(StringsRes.string.export_backup)) },
                                 onClick = {
                                     vm.flush()
                                     export.launch("vetki-${LocalDate.now()}.json")
@@ -425,7 +455,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Загрузить копию") },
+                                text = { Text(tr(StringsRes.string.import_backup)) },
                                 onClick = {
                                     import.launch(
                                         arrayOf(
@@ -438,7 +468,14 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("О приложении") },
+                                text = { Text(tr(StringsRes.string.language)) },
+                                onClick = {
+                                    chooseLanguage = true
+                                    menu = false
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(tr(StringsRes.string.about)) },
                                 onClick = {
                                     about = true
                                     menu = false
@@ -460,20 +497,26 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             Icons.Outlined.CalendarMonth,
                             Icons.Outlined.CheckBox,
                         )
-                    listOf("Заметки", "Холсты", "Календарь", "Сегодня").forEachIndexed { i, label ->
-                        NavigationBarItem(
-                            tab == i,
-                            { tab = i },
-                            icon = { Icon(icons[i], label) },
-                            label = { Text(label) },
-                            colors =
-                                NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Teal,
-                                    selectedTextColor = Teal,
-                                    indicatorColor = Panel,
-                                ),
+                    listOf(
+                            tr(StringsRes.string.notes),
+                            tr(StringsRes.string.canvases),
+                            tr(StringsRes.string.calendar),
+                            tr(StringsRes.string.today),
                         )
-                    }
+                        .forEachIndexed { i, label ->
+                            NavigationBarItem(
+                                tab == i,
+                                { tab = i },
+                                icon = { Icon(icons[i], label) },
+                                label = { Text(label) },
+                                colors =
+                                    NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Teal,
+                                        selectedTextColor = Teal,
+                                        indicatorColor = Panel,
+                                    ),
+                            )
+                        }
                 }
         },
         floatingActionButton = {
@@ -490,7 +533,11 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                     containerColor = Teal,
                     contentColor = Background,
                 ) {
-                    Icon(Icons.Outlined.Add, if (board != null) "Добавить карточку" else "Создать")
+                    Icon(
+                        Icons.Outlined.Add,
+                        if (board != null) tr(StringsRes.string.add_card)
+                        else tr(StringsRes.string.create),
+                    )
                 }
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -539,7 +586,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
     if (createMenu)
         AlertDialog(
             onDismissRequest = { createMenu = false },
-            title = { Text("Создать") },
+            title = { Text(tr(StringsRes.string.create)) },
             text = {
                 Column {
                     TextButton(
@@ -550,7 +597,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                         },
                         Modifier.fillMaxWidth(),
                     ) {
-                        Text("Заметку")
+                        Text(tr(StringsRes.string.note))
                     }
                     TextButton(
                         onClick = {
@@ -560,16 +607,18 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                         },
                         Modifier.fillMaxWidth(),
                     ) {
-                        Text("Папку")
+                        Text(tr(StringsRes.string.folder))
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { createMenu = false }) { Text("Отмена") } },
+            dismissButton = {
+                TextButton(onClick = { createMenu = false }) { Text(tr(StringsRes.string.cancel)) }
+            },
         )
     newNote?.let { folder ->
         NameDialog(
-            if (folder) "Новая папка" else "Новая заметка",
+            if (folder) tr(StringsRes.string.new_folder) else tr(StringsRes.string.new_note),
             onDismiss = { newNote = null },
             onSave = { vm.createNote(parentId, folder, it) { id -> if (!folder) noteId = id } },
         )
@@ -588,7 +637,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                 noteActions = null
                             }
                         ) {
-                            Text("Добавить заметку")
+                            Text(tr(StringsRes.string.add_note))
                         }
                         TextButton(
                             onClick = {
@@ -597,7 +646,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                                 noteActions = null
                             }
                         ) {
-                            Text("Добавить папку")
+                            Text(tr(StringsRes.string.add_folder))
                         }
                     }
                     TextButton(
@@ -606,7 +655,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             noteActions = null
                         }
                     ) {
-                        Text("Переименовать")
+                        Text(tr(StringsRes.string.rename))
                     }
                     TextButton(
                         onClick = {
@@ -614,7 +663,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             noteActions = null
                         }
                     ) {
-                        Text("Переместить")
+                        Text(tr(StringsRes.string.move))
                     }
                     TextButton(
                         onClick = {
@@ -622,26 +671,30 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             noteActions = null
                         }
                     ) {
-                        Text("Удалить", color = MaterialTheme.colorScheme.error)
+                        Text(tr(StringsRes.string.delete), color = MaterialTheme.colorScheme.error)
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { noteActions = null }) { Text("Закрыть") } },
+            dismissButton = {
+                TextButton(onClick = { noteActions = null }) { Text(tr(StringsRes.string.close)) }
+            },
         )
     }
     renameNote?.let { n ->
-        NameDialog("Переименовать", n.title, { renameNote = null }) {
+        NameDialog(tr(StringsRes.string.rename), n.title, { renameNote = null }) {
             vm.saveNote(n.copy(title = it))
             vm.flush()
         }
     }
     deleteNote?.let { n ->
         ConfirmDelete(
-            "Удалить ${if(n.folder) "папку" else "заметку"}?",
-            if (n.folder)
-                "Всё содержимое папки будет удалено. Сначала можно сохранить резервную копию."
-            else "Заметка будет удалена.",
+            tr(
+                StringsRes.string.delete_2,
+                if (n.folder) tr(StringsRes.string.folder_2) else tr(StringsRes.string.note_2),
+            ),
+            if (n.folder) tr(StringsRes.string.all_folder_contents_will_be_deleted_you_can_export)
+            else tr(StringsRes.string.this_note_will_be_deleted),
             { deleteNote = null },
         ) {
             if (noteId == n.id) noteId = null
@@ -656,7 +709,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
             )
         AlertDialog(
             onDismissRequest = { moveNote = null },
-            title = { Text("Куда переместить?") },
+            title = { Text(tr(StringsRes.string.move_to)) },
             text = {
                 Column(Modifier.heightIn(max = 350.dp).verticalScroll(rememberScrollState())) {
                     TextButton(
@@ -665,7 +718,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             moveNote = null
                         }
                     ) {
-                        Text("Моё пространство")
+                        Text(tr(StringsRes.string.my_space))
                     }
                     state.notes
                         .filter { it.folder && it.id !in forbidden }
@@ -682,7 +735,9 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { moveNote = null }) { Text("Отмена") } },
+            dismissButton = {
+                TextButton(onClick = { moveNote = null }) { Text(tr(StringsRes.string.cancel)) }
+            },
         )
     }
     if (createBoard)
@@ -710,7 +765,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             boardActions = null
                         }
                     ) {
-                        Text("Сохранить как шаблон")
+                        Text(tr(StringsRes.string.save_as_template))
                     }
                     TextButton(
                         onClick = {
@@ -718,7 +773,7 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             boardActions = null
                         }
                     ) {
-                        Text("Переименовать")
+                        Text(tr(StringsRes.string.rename))
                     }
                     TextButton(
                         onClick = {
@@ -726,23 +781,25 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
                             boardActions = null
                         }
                     ) {
-                        Text("Удалить", color = MaterialTheme.colorScheme.error)
+                        Text(tr(StringsRes.string.delete), color = MaterialTheme.colorScheme.error)
                     }
                 }
             },
             confirmButton = {},
-            dismissButton = { TextButton(onClick = { boardActions = null }) { Text("Закрыть") } },
+            dismissButton = {
+                TextButton(onClick = { boardActions = null }) { Text(tr(StringsRes.string.close)) }
+            },
         )
     }
     renameBoard?.let { b ->
-        NameDialog("Название холста", b.title, { renameBoard = null }) {
+        NameDialog(tr(StringsRes.string.canvas_title), b.title, { renameBoard = null }) {
             vm.saveBoard(b.copy(title = it))
         }
     }
     deleteBoard?.let { b ->
         ConfirmDelete(
-            "Удалить холст?",
-            "Карточки и напоминания этого холста будут удалены.",
+            tr(StringsRes.string.delete_canvas),
+            tr(StringsRes.string.all_cards_and_reminders_on_this_canvas_will_be),
             { deleteBoard = null },
         ) {
             vm.deleteBoard(b)
@@ -796,7 +853,11 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
             }
         }
     templateBoard?.let { target ->
-        NameDialog("Сохранить свой шаблон", target.title, { templateBoard = null }) { title ->
+        NameDialog(
+            tr(StringsRes.string.save_your_template),
+            target.title,
+            { templateBoard = null },
+        ) { title ->
             vm.saveTemplate(target, title)
         }
     }
@@ -833,24 +894,43 @@ fun VetkiApp(vm: VetkiViewModel, incoming: Intent?, consumeIntent: () -> Unit) {
             vm::deleteReminder,
         )
     }
+    if (chooseLanguage)
+        LanguageDialog(
+            selected = Language.selected(context),
+            onDismiss = { chooseLanguage = false },
+            onSelect = { language ->
+                chooseLanguage = false
+                if (language != Language.selected(context))
+                    scope.launch {
+                        vm.flushPending()
+                        Language.set(context, language)
+                        if (Build.VERSION.SDK_INT < 33) (context as? Activity)?.recreate()
+                    }
+            },
+        )
     ringing?.let { RingingScreen(it) }
     if (about)
         AlertDialog(
             onDismissRequest = { about = false },
-            title = { Text("Ветки · ${BuildConfig.VERSION_NAME}") },
+            title = { Text(tr(StringsRes.string.vetki, BuildConfig.VERSION_NAME)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Заметки, связанные идеи и планы в одном месте.")
+                    Text(tr(StringsRes.string.notes_connected_ideas_and_plans_in_one_place))
                     Text(
-                        "Данные хранятся на телефоне. Экспортируй резервную копию через меню.",
+                        tr(StringsRes.string.your_data_is_stored_on_this_phone_export_a),
                         color = Muted,
                     )
                     Text(
-                        "Для надёжных сигналов разреши уведомления и точные будильники. На Xiaomi также проверь ограничения батареи для приложения.",
+                        tr(
+                            StringsRes.string
+                                .for_reliable_reminders_allow_notifications_and_exact_alarms_on
+                        ),
                         color = Muted,
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = { about = false }) { Text("Понятно") } },
+            confirmButton = {
+                TextButton(onClick = { about = false }) { Text(tr(StringsRes.string.got_it)) }
+            },
         )
 }

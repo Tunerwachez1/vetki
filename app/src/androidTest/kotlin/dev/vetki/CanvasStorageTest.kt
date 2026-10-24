@@ -74,7 +74,12 @@ class CanvasStorageTest {
         val board = db.dao().createBoard("Работа", "work")
         val cards = db.dao().allCards()
         assertEquals(8, cards.size)
-        assertTrue(cards.any { it.title == "Ближайший шаг" && it.body.isNotBlank() })
+        assertTrue(
+            cards.any {
+                it.title == dev.vetki.i18n.tr(dev.vetki.i18n.R.string.next_step) &&
+                    it.body.isNotBlank()
+            }
+        )
         assertEquals(7, cards.count { it.parentId != null && it.boardId == board.id })
     }
 

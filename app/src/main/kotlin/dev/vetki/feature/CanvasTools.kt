@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.*
 import dev.vetki.data.*
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import dev.vetki.ui.*
 
 @Composable
@@ -42,16 +44,16 @@ fun CanvasActionMenu(
                     onClick = { choose(action) },
                 )
             }
-            item("Добавить карточку", Icons.Outlined.CropLandscape, "text")
-            item("Из моих заметок", Icons.Outlined.Description, "note")
-            item("Изображение или файл", Icons.Outlined.AttachFile, "file")
-            item("Добавить веб-ссылку", Icons.Outlined.OpenInNew, "link")
-            item("Создать группу", Icons.Outlined.SelectAll, "group")
+            item(tr(StringsRes.string.add_card), Icons.Outlined.CropLandscape, "text")
+            item(tr(StringsRes.string.from_my_notes), Icons.Outlined.Description, "note")
+            item(tr(StringsRes.string.image_or_file), Icons.Outlined.AttachFile, "file")
+            item(tr(StringsRes.string.add_web_link), Icons.Outlined.OpenInNew, "link")
+            item(tr(StringsRes.string.create_group), Icons.Outlined.SelectAll, "group")
             HorizontalDivider(Modifier.padding(vertical = 5.dp))
-            item("Вставить текст", Icons.Outlined.ContentPaste, "paste")
+            item(tr(StringsRes.string.paste_text), Icons.Outlined.ContentPaste, "paste")
             HorizontalDivider(Modifier.padding(vertical = 5.dp))
             DropdownMenuItem(
-                text = { Text("Привязка к сетке") },
+                text = { Text(tr(StringsRes.string.snap_to_grid)) },
                 leadingIcon = { Icon(Icons.Outlined.GridOn, null, Modifier.size(20.dp)) },
                 trailingIcon = { Checkbox(board.snapGrid, null) },
                 enabled = !board.readOnly,
@@ -61,7 +63,7 @@ fun CanvasActionMenu(
                 },
             )
             DropdownMenuItem(
-                text = { Text("Привязка к карточкам") },
+                text = { Text(tr(StringsRes.string.snap_to_cards)) },
                 leadingIcon = {
                     Icon(Icons.Outlined.DashboardCustomize, null, Modifier.size(20.dp))
                 },
@@ -73,7 +75,7 @@ fun CanvasActionMenu(
                 },
             )
             DropdownMenuItem(
-                text = { Text("Только просмотр") },
+                text = { Text(tr(StringsRes.string.read_only)) },
                 leadingIcon = { Icon(Icons.Outlined.LockOpen, null, Modifier.size(20.dp)) },
                 trailingIcon = { Checkbox(board.readOnly, null) },
                 onClick = {
@@ -93,42 +95,57 @@ fun CanvasHelpSheet(board: Board, onDismiss: () -> Unit) {
         when (page) {
             0 ->
                 listOf(
-                    "Начни с результата" to
-                        "Одна главная карточка отвечает на вопрос: что я хочу понять или получить? Например: «Подготовить поездку без забытых дел».",
-                    "Одна карточка — одна мысль" to
-                        "Если в формулировке несколько самостоятельных вопросов, раздели их на соседние ветки.",
-                    "От общего к конкретному" to
-                        "Тема → направления → вопросы → решения → ближайшие действия. Не обязательно заполнять всё сразу.",
-                    "Как управлять холстом" to
-                        "Нажми на свободное место для меню. Удерживай карточку до отклика, затем двигай. Два пальца меняют масштаб; «Обзор» показывает всё дерево.",
-                    "Используй группы" to
-                        "Группа — общая рамка. Перемести карточки внутрь: при переносе рамки за заголовок они поедут вместе. При удалении рамки карточки сохранятся.",
+                    tr(StringsRes.string.start_with_the_outcome) to
+                        tr(StringsRes.string.one_main_card_answers_what_do_i_want_to),
+                    tr(StringsRes.string.one_card_one_thought) to
+                        tr(
+                            StringsRes.string
+                                .if_a_sentence_contains_several_independent_questions_split_them
+                        ),
+                    tr(StringsRes.string.from_broad_to_specific) to
+                        tr(
+                            StringsRes.string
+                                .topic_areas_questions_decisions_next_actions_you_do_not
+                        ),
+                    tr(StringsRes.string.using_the_canvas) to
+                        tr(StringsRes.string.tap_an_empty_area_to_open_the_menu_hold),
+                    tr(StringsRes.string.use_groups) to
+                        tr(StringsRes.string.a_group_is_a_shared_frame_move_cards_inside),
                 )
             1 ->
                 listOf(
-                    "Спроси конкретно" to
-                        "Вместо «Что с работой?» — «Какие материалы нужны, чтобы закончить отчёт к пятнице?».",
-                    "Уточни границы" to
-                        "Добавь контекст: для кого, к какому сроку, с каким бюджетом и ограничениями. Вопрос станет проще исследовать.",
-                    "Разделяй факты и предположения" to
-                        "«Цена ещё неизвестна» — факт. «Наверное, будет дорого» — предположение. Для него нужна ветка «Как проверить?».",
-                    "Спроси о следующем шаге" to
-                        "Вместо «Как всё успеть?» — «Какое действие на 15 минут я могу сделать сейчас?».",
-                    "Оставляй место неизвестному" to
-                        "Не придумывай ответ ради заполненной карточки. Запиши, где узнать ответ и что именно проверить.",
+                    tr(StringsRes.string.ask_a_specific_question) to
+                        tr(StringsRes.string.instead_of_what_about_work_ask_what_materials_do),
+                    tr(StringsRes.string.define_the_boundaries) to
+                        tr(StringsRes.string.add_context_who_it_is_for_the_deadline_budget),
+                    tr(StringsRes.string.separate_facts_from_assumptions) to
+                        tr(StringsRes.string.the_price_is_unknown_is_a_fact_it_will),
+                    tr(StringsRes.string.ask_about_the_next_step) to
+                        tr(StringsRes.string.instead_of_how_can_i_get_everything_done_ask),
+                    tr(StringsRes.string.leave_room_for_unknowns) to
+                        tr(StringsRes.string.do_not_invent_an_answer_just_to_fill_a),
                 )
             else ->
                 listOf(
-                    "Построй цепочку" to
-                        "Вопрос → возможные ответы → что проверить → решение → действие. Каждая стрелка должна объяснять, почему следующий шаг связан с предыдущим.",
-                    "Проверяй развилки" to
-                        "Если есть выбор, создай соседние варианты и сравни их по одинаковым критериям: время, цена, риск, результат.",
-                    "Делай действия проверяемыми" to
-                        "«Заняться жильём» → «Выбрать три варианта до четверга». Понятно, когда действие закончено.",
-                    "Проверь дерево" to
-                        "Нет ли одинаковых карточек? Не пропущен ли важный шаг? Есть ли ответственный и срок? Где пока только догадка?",
-                    "Не усложняй ради схемы" to
-                        "Если обычный список понятнее — переключись в список. Дерево помогает думать, а не требует идеальной формы.",
+                    tr(StringsRes.string.build_a_chain) to
+                        tr(
+                            StringsRes.string
+                                .question_possible_answers_what_to_check_decision_action_each
+                        ),
+                    tr(StringsRes.string.check_your_choices) to
+                        tr(
+                            StringsRes.string
+                                .when_choosing_create_neighboring_options_and_compare_them_using
+                        ),
+                    tr(StringsRes.string.make_actions_verifiable) to
+                        tr(
+                            StringsRes.string
+                                .sort_out_accommodation_choose_three_options_by_thursday_now
+                        ),
+                    tr(StringsRes.string.review_the_tree) to
+                        tr(StringsRes.string.are_any_cards_duplicated_is_an_important_step_missing),
+                    tr(StringsRes.string.keep_it_useful) to
+                        tr(StringsRes.string.if_a_simple_list_is_clearer_switch_to_list),
                 )
         }
     ModalBottomSheet(
@@ -141,18 +158,26 @@ fun CanvasHelpSheet(board: Board, onDismiss: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Text("Помощник мысли", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    "Небольшие подсказки для ясного дерева",
+                    tr(StringsRes.string.thinking_guide),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    tr(StringsRes.string.small_tips_for_a_clearer_tree),
                     color = Muted,
                     modifier = Modifier.padding(top = 6.dp),
                 )
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Начало", "Вопросы", "Цепочка").forEachIndexed { index, title ->
-                        FilterChip(page == index, { page = index }, label = { Text(title) })
-                    }
+                    listOf(
+                            tr(StringsRes.string.start),
+                            tr(StringsRes.string.questions),
+                            tr(StringsRes.string.chain),
+                        )
+                        .forEachIndexed { index, title ->
+                            FilterChip(page == index, { page = index }, label = { Text(title) })
+                        }
                 }
             }
             if (board.template == "work" || board.template == "travel")
@@ -163,9 +188,12 @@ fun CanvasHelpSheet(board: Board, onDismiss: () -> Unit) {
                     ) {
                         Text(
                             if (board.template == "work")
-                                "Для работы: начни с результата и критерия готовности, затем уточни срок, ответственных и первый шаг."
+                                tr(StringsRes.string.for_work_start_with_the_outcome_and_what_done)
                             else
-                                "Для путешествия: сначала даты и бюджет, затем документы, жильё, дорога и запасной план.",
+                                tr(
+                                    StringsRes.string
+                                        .for_travel_begin_with_dates_and_budget_then_documents
+                                ),
                             Modifier.padding(16.dp),
                             style = MaterialTheme.typography.bodyMedium,
                         )
@@ -195,20 +223,20 @@ fun NotePicker(notes: List<Note>, onDismiss: () -> Unit, onPick: (Note) -> Unit)
     var query by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Из моих заметок") },
+        title = { Text(tr(StringsRes.string.from_my_notes)) },
         text = {
             Column {
                 OutlinedTextField(
                     query,
                     { query = it },
                     singleLine = true,
-                    label = { Text("Поиск заметки") },
+                    label = { Text(tr(StringsRes.string.search_notes)) },
                 )
                 Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState())) {
                     val available = notes.filter { !it.folder && it.title.contains(query, true) }
                     if (available.isEmpty())
                         Text(
-                            "Подходящих заметок пока нет",
+                            tr(StringsRes.string.no_matching_notes_yet),
                             Modifier.padding(vertical = 20.dp),
                             color = Muted,
                         )
@@ -227,7 +255,7 @@ fun NotePicker(notes: List<Note>, onDismiss: () -> Unit, onPick: (Note) -> Unit)
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Закрыть") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr(StringsRes.string.close)) } },
     )
 }
 
@@ -238,13 +266,13 @@ fun LinkDialog(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
     var error by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Добавить веб-ссылку") },
+        title = { Text(tr(StringsRes.string.add_web_link)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     title,
                     { title = it },
-                    label = { Text("Название") },
+                    label = { Text(tr(StringsRes.string.title)) },
                     singleLine = true,
                 )
                 OutlinedTextField(
@@ -253,11 +281,17 @@ fun LinkDialog(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
                         url = it
                         error = false
                     },
-                    label = { Text("Адрес сайта") },
+                    label = { Text(tr(StringsRes.string.website_address)) },
                     singleLine = true,
                     isError = error,
                     supportingText = {
-                        if (error) Text("Введи адрес сайта, например https://example.com")
+                        if (error)
+                            Text(
+                                tr(
+                                    StringsRes.string
+                                        .enter_a_website_address_such_as_https_example_com
+                                )
+                            )
                     },
                 )
             }
@@ -280,9 +314,9 @@ fun LinkDialog(onDismiss: () -> Unit, onSave: (String, String) -> Unit) {
                     }
                 }
             ) {
-                Text("Добавить")
+                Text(tr(StringsRes.string.add))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr(StringsRes.string.cancel)) } },
     )
 }

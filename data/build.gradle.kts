@@ -18,6 +18,7 @@ android {
 room { schemaDirectory("$projectDir/schemas") }
 
 dependencies {
+    implementation(project(":i18n"))
     api(project(":core"))
     implementation("androidx.core:core-ktx:1.16.0")
     api("androidx.room:room-runtime:2.7.2")

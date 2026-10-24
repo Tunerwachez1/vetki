@@ -9,16 +9,19 @@ import androidx.compose.ui.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.Strings
+import dev.vetki.i18n.tr
 import java.time.*
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
-val Ru = Locale.forLanguageTag("ru")
+val AppLocale
+    get() = Strings.locale
 
 fun dateTime(at: Long): String =
     Instant.ofEpochMilli(at)
         .atZone(ZoneId.systemDefault())
-        .format(DateTimeFormatter.ofPattern("d MMM · HH:mm", Ru))
+        .format(DateTimeFormatter.ofPattern("d MMM · HH:mm", AppLocale))
 
 fun dayOf(at: Long): LocalDate =
     Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()).toLocalDate()
@@ -81,7 +84,7 @@ fun NameDialog(
             OutlinedTextField(
                 value,
                 { value = it },
-                label = { Text("Название") },
+                label = { Text(tr(StringsRes.string.title)) },
                 singleLine = true,
             )
         },
@@ -93,10 +96,10 @@ fun NameDialog(
                 },
                 enabled = value.isNotBlank(),
             ) {
-                Text("Сохранить")
+                Text(tr(StringsRes.string.save))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr(StringsRes.string.cancel)) } },
     )
 }
 
@@ -113,9 +116,9 @@ fun ConfirmDelete(title: String, body: String, onDismiss: () -> Unit, onDelete: 
                     onDismiss()
                 }
             ) {
-                Text("Удалить", color = MaterialTheme.colorScheme.error)
+                Text(tr(StringsRes.string.delete), color = MaterialTheme.colorScheme.error)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr(StringsRes.string.cancel)) } },
     )
 }

@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import dev.vetki.core.*
 import dev.vetki.data.*
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import dev.vetki.reminders.ReminderScheduler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -51,7 +53,9 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
                 block()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                messages.emit("Не удалось сохранить: ${e.message ?: "ошибка"}")
+                messages.emit(
+                    tr(StringsRes.string.could_not_save, e.message ?: tr(StringsRes.string.error))
+                )
             }
         }
     }
@@ -96,7 +100,11 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
             val note =
                 Note(
                     parentId = parent,
-                    title = title.trim().ifBlank { if (folder) "Новая папка" else "Новая заметка" },
+                    title =
+                        title.trim().ifBlank {
+                            if (folder) tr(StringsRes.string.new_folder)
+                            else tr(StringsRes.string.new_note)
+                        },
                     folder = folder,
                 )
             dao.save(note)
@@ -122,7 +130,9 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
                 dao.allNotes().map { TreeEntry(it.id, it.parentId, it.title, it.folder) },
                 note.id,
             )
-        require(parent !in forbidden) { "Нельзя перенести папку внутрь себя" }
+        require(parent !in forbidden) {
+            tr(StringsRes.string.a_folder_cannot_be_moved_inside_itself)
+        }
         dao.save(note.copy(parentId = parent))
     }
 
@@ -131,7 +141,11 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
             .withTransaction {
                 if (template.startsWith("saved:"))
                     dao.fromTemplate(title, template.removePrefix("saved:"))
-                else dao.createBoard(title.trim().ifBlank { "Новый холст" }, template)
+                else
+                    dao.createBoard(
+                        title.trim().ifBlank { tr(StringsRes.string.new_canvas) },
+                        template,
+                    )
             }
             .let { done(it.id) }
     }
@@ -151,7 +165,9 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun saveCard(card: Card) = launch {
-        require(dao.board(card.boardId)?.readOnly != true) { "Холст доступен только для просмотра" }
+        require(dao.board(card.boardId)?.readOnly != true) {
+            tr(StringsRes.string.this_canvas_is_read_only)
+        }
         dao.save(card.copy(connections = dao.card(card.id)?.connections ?: card.connections))
         dao.allReminders()
             .filter { it.cardId == card.id }
@@ -165,7 +181,7 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
         board: String,
         point: WorldPoint? = null,
         kind: String = "text",
-        title: String = "Новая карточка",
+        title: String = tr(StringsRes.string.new_card),
         body: String = "",
         noteId: String? = null,
         uri: String? = null,
@@ -174,7 +190,7 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
     ) = launch {
         boardLock.withLock {
             val settings = requireNotNull(dao.board(board))
-            require(!settings.readOnly) { "Сначала отключи режим просмотра" }
+            require(!settings.readOnly) { tr(StringsRes.string.turn_off_read_only_mode_first) }
             val all = dao.allCards().filter { it.boardId == board }
             val width = if (kind == "group") 440f else if (kind == "image") 220f else 190f
             val height = if (kind == "group") 300f else if (kind == "image") 190f else 112f
@@ -259,7 +275,7 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
             database.withTransaction {
                 val card = dao.card(id) ?: return@withTransaction
                 val board = dao.board(card.boardId) ?: return@withTransaction
-                require(!board.readOnly) { "Холст доступен только для просмотра" }
+                require(!board.readOnly) { tr(StringsRes.string.this_canvas_is_read_only) }
                 val others = dao.allCards().filter { it.boardId == card.boardId }
                 val position =
                     snapPosition(
@@ -313,7 +329,7 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
 
     fun saveTemplate(board: Board, title: String) = launch {
         database.withTransaction { dao.saveAsTemplate(board, title) }
-        messages.emit("Шаблон сохранён — он доступен при создании холста")
+        messages.emit(tr(StringsRes.string.template_saved_available_when_you_create_a_canvas))
     }
 
     fun deleteTemplate(id: String) = launch { dao.deleteTemplate(id) }
@@ -360,8 +376,8 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
         }
         scheduler.schedule(reminder.copy(done = false, delivered = false, nextAt = null))
         messages.emit(
-            if (scheduler.exactAvailable()) "Напоминание установлено"
-            else "Сохранено. Без доступа к точным сигналам возможна задержка"
+            if (scheduler.exactAvailable()) tr(StringsRes.string.reminder_set)
+            else tr(StringsRes.string.saved_without_exact_alarm_access_delivery_may_be_delayed)
         )
     }
 
@@ -373,7 +389,9 @@ class VetkiViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun layoutBoard(board: String) = launch {
-        require(dao.board(board)?.readOnly != true) { "Холст доступен только для просмотра" }
+        require(dao.board(board)?.readOnly != true) {
+            tr(StringsRes.string.this_canvas_is_read_only)
+        }
         val cards = dao.allCards().filter { it.boardId == board && it.kind != "group" }
         val children = cards.groupBy { it.parentId }
         val seen = mutableSetOf<String>()

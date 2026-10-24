@@ -14,6 +14,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":i18n"))
     implementation(project(":data"))
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")

@@ -10,6 +10,8 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import dev.vetki.core.alarmGain
 import dev.vetki.data.*
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
@@ -71,12 +73,15 @@ class AlarmPlaybackService : Service() {
             .createNotificationChannel(
                 NotificationChannel(
                         CHANNEL,
-                        "Звонящий будильник",
+                        tr(StringsRes.string.ringing_alarm),
                         NotificationManager.IMPORTANCE_HIGH,
                     )
                     .apply {
                         description =
-                            "Мелодия играет по кругу до остановки, громкость плавно нарастает"
+                            tr(
+                                StringsRes.string
+                                    .the_sound_repeats_until_stopped_and_gradually_increases_in
+                            )
                         setSound(null, null)
                         enableVibration(false)
                     }
@@ -101,7 +106,7 @@ class AlarmPlaybackService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        val title = intent?.getStringExtra("title") ?: "Будильник"
+        val title = intent?.getStringExtra("title") ?: tr(StringsRes.string.alarm)
         ServiceCompat.startForeground(
             this,
             NOTIFICATION,
@@ -152,7 +157,8 @@ class AlarmPlaybackService : Service() {
                             AudioManager.AUDIOFOCUS_REQUEST_FAILED ->
                                 AlarmPlaybackState.mutable.value =
                                     AlarmPlaybackState.current.value?.copy(
-                                        error = "Android не предоставил доступ к звуку"
+                                        error =
+                                            tr(StringsRes.string.android_did_not_grant_audio_access)
                                     )
                         }
                     }
@@ -210,7 +216,7 @@ class AlarmPlaybackService : Service() {
         AlarmPlaybackState.mutable.value =
             AlarmPlaybackState.current.value?.copy(
                 playing = false,
-                error = "Не удалось воспроизвести мелодию",
+                error = tr(StringsRes.string.could_not_play_the_sound),
             )
     }
 
@@ -235,8 +241,10 @@ class AlarmPlaybackService : Service() {
             )
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setContentTitle(if (queue.size > 1) "$title · ещё ${queue.size-1}" else title)
-            .setContentText("Спокойная музыка · звонит до остановки")
+            .setContentTitle(
+                if (queue.size > 1) tr(StringsRes.string.more, title, queue.size - 1) else title
+            )
+            .setContentText(tr(StringsRes.string.calm_music_rings_until_stopped))
             .setContentIntent(open)
             .setOngoing(true)
             .setAutoCancel(false)
@@ -244,8 +252,8 @@ class AlarmPlaybackService : Service() {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .addAction(0, "Остановить", action("stop_all"))
-            .addAction(0, "Через 10 мин", action("snooze_all"))
+            .addAction(0, tr(StringsRes.string.stop), action("stop_all"))
+            .addAction(0, tr(StringsRes.string.in_10_min), action("snooze_all"))
             .build()
     }
 

@@ -11,6 +11,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import dev.vetki.core.nextOccurrence
 import dev.vetki.data.*
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import kotlinx.coroutines.*
 
 class ReminderScheduler(private val context: Context) {
@@ -126,7 +128,7 @@ class ReminderScheduler(private val context: Context) {
         val normal =
             NotificationChannel(
                     "reminders_calm_v1",
-                    "Напоминания · Спокойная музыка",
+                    tr(StringsRes.string.reminders_calm_music),
                     NotificationManager.IMPORTANCE_HIGH,
                 )
                 .apply {
@@ -141,7 +143,7 @@ class ReminderScheduler(private val context: Context) {
         val alarm =
             NotificationChannel(
                     "alarms_calm_v1",
-                    "Будильники · Спокойная музыка",
+                    tr(StringsRes.string.alarms_calm_music),
                     NotificationManager.IMPORTANCE_HIGH,
                 )
                 .apply {
@@ -170,7 +172,8 @@ class ReminderScheduler(private val context: Context) {
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
                 .setContentTitle(r.title)
                 .setContentText(
-                    if (r.nag) "Напомню снова через 10 минут" else "Время для твоих планов"
+                    if (r.nag) tr(StringsRes.string.we_will_remind_you_again_in_10_minutes)
+                    else tr(StringsRes.string.time_for_your_plans)
                 )
                 .setContentIntent(openIntent(r))
                 .setAutoCancel(true)
@@ -179,8 +182,8 @@ class ReminderScheduler(private val context: Context) {
                     else NotificationCompat.CATEGORY_REMINDER
                 )
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .addAction(0, "Выполнено", action(r, "done"))
-                .addAction(0, "Через 10 мин", action(r, "snooze"))
+                .addAction(0, tr(StringsRes.string.completed), action(r, "done"))
+                .addAction(0, tr(StringsRes.string.in_10_min), action(r, "snooze"))
                 .build()
         manager.notify(r.id.hashCode(), notification)
         return false

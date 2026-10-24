@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import dev.vetki.canvas.BoardCanvas
 import dev.vetki.core.WorldPoint
 import dev.vetki.data.*
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import dev.vetki.ui.*
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
@@ -44,9 +46,12 @@ fun BoardsScreen(
                 Column(Modifier.padding(20.dp)) {
                     Icon(Icons.Outlined.AccountTree, null, tint = Teal)
                     Spacer(Modifier.height(12.dp))
-                    Text("Дай мыслям пространство", style = MaterialTheme.typography.titleLarge)
                     Text(
-                        "Связывай идеи, строй планы и превращай их в действия.",
+                        tr(StringsRes.string.give_your_thoughts_space),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    Text(
+                        tr(StringsRes.string.connect_ideas_make_plans_and_turn_them_into_actions),
                         Modifier.padding(top = 8.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Muted,
@@ -54,14 +59,14 @@ fun BoardsScreen(
                 }
             }
         }
-        item { SectionLabel("ТВОИ ХОЛСТЫ", "${boards.size}") }
+        item { SectionLabel(tr(StringsRes.string.your_canvases), "${boards.size}") }
         if (boards.isEmpty())
             item {
                 EmptyState(
                     Icons.Outlined.AccountTree,
-                    "Первый холст",
-                    "Начни с чистого листа или готового шаблона",
-                    "Создать холст",
+                    tr(StringsRes.string.your_first_canvas),
+                    tr(StringsRes.string.start_with_a_blank_canvas_or_a_ready_made),
+                    tr(StringsRes.string.create_canvas),
                     onCreate,
                 )
             }
@@ -92,13 +97,17 @@ fun BoardsScreen(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                "${boardCards.size} карточек · ${boardCards.count { it.done }} выполнено",
+                                tr(
+                                    StringsRes.string.cards_completed,
+                                    boardCards.size,
+                                    boardCards.count { it.done },
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Muted,
                             )
                         }
                         IconButton(onClick = { onMenu(board) }) {
-                            Icon(Icons.Outlined.MoreHoriz, "Действия холста")
+                            Icon(Icons.Outlined.MoreHoriz, tr(StringsRes.string.canvas_actions))
                         }
                     }
                     Row(
@@ -141,11 +150,31 @@ fun CreateBoardSheet(
     var title by rememberSaveable { mutableStateOf("") }
     val templates =
         listOf(
-            Triple("empty", "Пустой холст", "Чистое пространство для твоих идей"),
-            Triple("travel", "Путешествие", "Документы, жильё, бюджет и вещи"),
-            Triple("project", "Проект", "Цель, этапы, задачи и вопросы"),
-            Triple("decision", "Принять решение", "Варианты, преимущества и риски"),
-            Triple("work", "Работа", "Результат, сроки, ответственные и действия"),
+            Triple(
+                "empty",
+                tr(StringsRes.string.blank_canvas),
+                tr(StringsRes.string.an_empty_space_for_your_ideas),
+            ),
+            Triple(
+                "travel",
+                tr(StringsRes.string.travel),
+                tr(StringsRes.string.documents_accommodation_budget_and_packing),
+            ),
+            Triple(
+                "project",
+                tr(StringsRes.string.project),
+                tr(StringsRes.string.goal_milestones_tasks_and_questions),
+            ),
+            Triple(
+                "decision",
+                tr(StringsRes.string.make_a_decision),
+                tr(StringsRes.string.options_benefits_and_risks),
+            ),
+            Triple(
+                "work",
+                tr(StringsRes.string.work),
+                tr(StringsRes.string.results_deadlines_owners_and_actions),
+            ),
         )
     ModalBottomSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -158,13 +187,13 @@ fun CreateBoardSheet(
                 .padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Новый холст", style = MaterialTheme.typography.headlineSmall)
-            Text("Выбери отправную точку", color = Muted)
+            Text(tr(StringsRes.string.new_canvas), style = MaterialTheme.typography.headlineSmall)
+            Text(tr(StringsRes.string.choose_a_starting_point), color = Muted)
             OutlinedTextField(
                 title,
                 { title = it },
                 Modifier.fillMaxWidth(),
-                label = { Text("Название холста") },
+                label = { Text(tr(StringsRes.string.canvas_title)) },
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
             )
@@ -204,12 +233,12 @@ fun CreateBoardSheet(
                     Icon(Icons.Outlined.AutoAwesome, null, tint = Amber)
                     Column(Modifier.padding(start = 12.dp)) {
                         Text(
-                            "Свой шаблон",
+                            tr(StringsRes.string.your_own_template),
                             color = Amber,
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            "Сохрани собственную структуру и используй снова",
+                            tr(StringsRes.string.save_your_own_structure_and_use_it_again),
                             color = Muted,
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -218,7 +247,7 @@ fun CreateBoardSheet(
             }
             if (template == "custom" || template.startsWith("saved:")) {
                 Text(
-                    "Начни с пустого холста и выбери «Сохранить как шаблон» в его меню ⋮.",
+                    tr(StringsRes.string.start_with_a_blank_canvas_and_choose_save_as),
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -242,7 +271,7 @@ fun CreateBoardSheet(
                         ) {
                             Icon(
                                 Icons.Outlined.DeleteOutline,
-                                "Удалить шаблон ${saved.title}",
+                                tr(StringsRes.string.delete_template, saved.title),
                                 tint = Muted,
                             )
                         }
@@ -253,10 +282,10 @@ fun CreateBoardSheet(
                 onClick = {
                     onCreate(
                         title.ifBlank {
-                            if (template == "custom") "Мой шаблон"
+                            if (template == "custom") tr(StringsRes.string.my_template)
                             else if (template.startsWith("saved:"))
                                 savedTemplates.firstOrNull { "saved:${it.id}" == template }?.title
-                                    ?: "Мой холст"
+                                    ?: tr(StringsRes.string.my_canvas)
                             else templates.first { it.first == template }.second
                         },
                         template,
@@ -265,7 +294,10 @@ fun CreateBoardSheet(
                 Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
-                Text(if (template == "custom") "Создать основу шаблона" else "Создать холст")
+                Text(
+                    if (template == "custom") tr(StringsRes.string.create_template_draft)
+                    else tr(StringsRes.string.create_canvas)
+                )
             }
         }
     }
@@ -401,7 +433,7 @@ fun CardSheet(
     var groupHeight by rememberSaveable(card.id) { mutableStateOf(card.height.toInt().toString()) }
     fun draft() =
         card.copy(
-            title = title.trim().ifBlank { "Без названия" },
+            title = title.trim().ifBlank { tr(StringsRes.string.untitled) },
             body = body,
             status = status,
             done = done,
@@ -429,15 +461,16 @@ fun CardSheet(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
-                if (readOnly) "Просмотр карточки"
-                else if (card.kind == "group") "Группа" else "Карточка",
+                if (readOnly) tr(StringsRes.string.view_card)
+                else if (card.kind == "group") tr(StringsRes.string.group)
+                else tr(StringsRes.string.card),
                 style = MaterialTheme.typography.headlineSmall,
             )
             OutlinedTextField(
                 title,
                 { title = it },
                 Modifier.fillMaxWidth(),
-                label = { Text("Название") },
+                label = { Text(tr(StringsRes.string.title)) },
                 readOnly = readOnly,
                 shape = RoundedCornerShape(14.dp),
             )
@@ -445,7 +478,7 @@ fun CardSheet(
                 body,
                 { body = it },
                 Modifier.fillMaxWidth().heightIn(min = 120.dp),
-                label = { Text("Заметки и вопросы") },
+                label = { Text(tr(StringsRes.string.notes_and_questions)) },
                 readOnly = readOnly,
                 shape = RoundedCornerShape(14.dp),
             )
@@ -455,7 +488,7 @@ fun CardSheet(
                         groupWidth,
                         { groupWidth = it.filter(Char::isDigit) },
                         Modifier.weight(1f),
-                        label = { Text("Ширина") },
+                        label = { Text(tr(StringsRes.string.width)) },
                         singleLine = true,
                         readOnly = readOnly,
                     )
@@ -463,7 +496,7 @@ fun CardSheet(
                         groupHeight,
                         { groupHeight = it.filter(Char::isDigit) },
                         Modifier.weight(1f),
-                        label = { Text("Высота") },
+                        label = { Text(tr(StringsRes.string.height)) },
                         singleLine = true,
                         readOnly = readOnly,
                     )
@@ -479,8 +512,9 @@ fun CardSheet(
                     Icon(Icons.Outlined.OpenInNew, null)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (card.kind == "note") "Открыть заметку"
-                        else if (card.kind == "link") "Открыть сайт" else "Открыть файл"
+                        if (card.kind == "note") tr(StringsRes.string.open_note)
+                        else if (card.kind == "link") tr(StringsRes.string.open_website)
+                        else tr(StringsRes.string.open_file)
                     )
                 }
             if (!readOnly && card.kind != "group")
@@ -505,7 +539,7 @@ fun CardSheet(
                             if (it) status = 3 else if (status == 3) status = 0
                         },
                     )
-                    Text("Выполнено")
+                    Text(tr(StringsRes.string.completed))
                 }
             if (!readOnly && card.kind != "group")
                 OutlinedButton(
@@ -518,12 +552,12 @@ fun CardSheet(
                 ) {
                     Icon(Icons.Outlined.NotificationsActive, null)
                     Spacer(Modifier.width(10.dp))
-                    Text(reminder?.let { dateTime(it.at) } ?: "Добавить напоминание")
+                    Text(reminder?.let { dateTime(it.at) } ?: tr(StringsRes.string.add_reminder))
                 }
             if (!readOnly)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(onClick = { confirm = true }) {
-                        Icon(Icons.Outlined.DeleteOutline, "Удалить карточку")
+                        Icon(Icons.Outlined.DeleteOutline, tr(StringsRes.string.delete_card))
                     }
                 }
             Button(
@@ -534,15 +568,16 @@ fun CardSheet(
                 Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
-                Text(if (readOnly) "Закрыть" else "Сохранить")
+                Text(if (readOnly) tr(StringsRes.string.close) else tr(StringsRes.string.save))
             }
         }
     }
     if (confirm)
         ConfirmDelete(
-            if (card.kind == "group") "Удалить рамку группы?" else "Удалить ветку?",
-            if (card.kind == "group") "Карточки внутри останутся на холсте."
-            else "Карточка, её дочерние карточки и напоминания будут удалены.",
+            if (card.kind == "group") tr(StringsRes.string.delete_group_frame)
+            else tr(StringsRes.string.delete_branch),
+            if (card.kind == "group") tr(StringsRes.string.cards_inside_will_stay_on_the_canvas)
+            else tr(StringsRes.string.this_card_its_child_cards_and_their_reminders_will),
             { confirm = false },
             {
                 onDelete()

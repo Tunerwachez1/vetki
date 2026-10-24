@@ -1,6 +1,8 @@
 package dev.vetki.data
 
 import androidx.room.withTransaction
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import org.json.*
 
 object Backup {
@@ -72,10 +74,12 @@ object Backup {
                             var total = 0L
                             uris.forEach { uri ->
                                 val f = attachments.file(uri)
-                                require(f.exists()) { "Вложение не найдено: $uri" }
+                                require(f.exists()) {
+                                    tr(StringsRes.string.attachment_not_found, uri)
+                                }
                                 total += f.length()
                                 require(total <= 20 * 1024 * 1024) {
-                                    "Для одной копии доступно до 20 МБ вложений"
+                                    tr(StringsRes.string.a_backup_can_include_up_to_20_mb_of)
                                 }
                                 put(
                                     JSONObject()
@@ -117,10 +121,10 @@ object Backup {
         }
 
     suspend fun restore(db: VetkiDatabase, text: String, attachments: AttachmentStore? = null) {
-        require(text.length < 40_000_000) { "Копия слишком большая" }
+        require(text.length < 40_000_000) { tr(StringsRes.string.the_backup_is_too_large) }
         val root = JSONObject(text)
         require(root.getString("format") == "vetki" && root.getInt("version") in 1..2) {
-            "Неподдерживаемый формат копии"
+            tr(StringsRes.string.unsupported_backup_format)
         }
         fun objects(name: String): List<JSONObject> =
             (root.optJSONArray(name) ?: JSONArray()).let { array ->
@@ -183,16 +187,19 @@ object Backup {
         require(
             byNote.size == notes.size && byCard.size == cards.size && boardIds.size == boards.size
         ) {
-            "Повторяющиеся идентификаторы"
+            tr(StringsRes.string.duplicate_identifiers)
         }
         notes.forEach { note ->
             val seen = mutableSetOf<String>()
             var n: Note? = note
             while (n != null) {
-                require(seen.add(n.id)) { "Цикл в дереве папок" }
+                require(seen.add(n.id)) { tr(StringsRes.string.cycle_in_the_folder_tree) }
                 val parent = n.parentId
-                n = parent?.let { requireNotNull(byNote[it]) { "Папка не найдена" } }
-                require(n == null || n.folder) { "Некорректная папка" }
+                n =
+                    parent?.let {
+                        requireNotNull(byNote[it]) { tr(StringsRes.string.folder_not_found) }
+                    }
+                require(n == null || n.folder) { tr(StringsRes.string.invalid_folder) }
             }
         }
         cards.forEach { c ->
@@ -205,7 +212,7 @@ object Backup {
                     c.width in 100f..5000f &&
                     c.height in 80f..5000f
             ) {
-                "Некорректная карточка"
+                tr(StringsRes.string.invalid_card)
             }
             CardJson.connections(c.connections).forEach { link ->
                 require(
@@ -214,7 +221,7 @@ object Backup {
                             it.boardId == c.boardId && it.kind != "group"
                         } == true
                 ) {
-                    "Некорректная связь карточек"
+                    tr(StringsRes.string.invalid_card_connection)
                 }
             }
             require(c.kind in setOf("text", "note", "image", "file", "link", "group"))
@@ -227,7 +234,7 @@ object Backup {
             val seen = mutableSetOf<String>()
             var n: Card? = c
             while (n != null) {
-                require(seen.add(n.id)) { "Цикл в дереве карточек" }
+                require(seen.add(n.id)) { tr(StringsRes.string.cycle_in_the_card_tree) }
                 val parent = n.parentId
                 n = parent?.let { requireNotNull(byCard[it]) }
                 require(n == null || n.boardId == c.boardId)
@@ -249,13 +256,17 @@ object Backup {
         }
         val decodedAssets =
             objects("assets").map { asset ->
-                require(attachments != null) { "Для восстановления вложений требуется хранилище" }
+                require(attachments != null) {
+                    tr(StringsRes.string.attachment_storage_is_required_to_restore_files)
+                }
                 val target = attachments.file(asset.getString("uri"))
                 val data =
                     android.util.Base64.decode(asset.getString("data"), android.util.Base64.DEFAULT)
-                require(data.size <= AttachmentStore.MAX_FILE) { "Вложение слишком большое" }
+                require(data.size <= AttachmentStore.MAX_FILE) {
+                    tr(StringsRes.string.the_attachment_is_too_large)
+                }
                 require(!target.exists() || target.readBytes().contentEquals(data)) {
-                    "Вложение с таким именем уже существует"
+                    tr(StringsRes.string.an_attachment_with_this_name_already_exists)
                 }
                 target to data
             }

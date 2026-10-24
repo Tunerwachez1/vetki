@@ -12,6 +12,8 @@ import androidx.compose.ui.*
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.vetki.data.*
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import dev.vetki.ui.*
 import java.time.*
 import java.time.format.DateTimeFormatter
@@ -46,10 +48,11 @@ fun ReminderRow(r: Reminder, boards: List<Board>, onOpen: () -> Unit, onComplete
             Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
                 Text(r.title, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    if (r.done) "Выполнено"
+                    if (r.done) tr(StringsRes.string.completed)
                     else
                         r.boardId?.let { id -> boards.firstOrNull { it.id == id }?.title }
-                            ?: if (r.nag) "Повтор до подтверждения" else "Напоминание",
+                            ?: if (r.nag) tr(StringsRes.string.repeat_until_completed)
+                            else tr(StringsRes.string.reminder),
                     style = MaterialTheme.typography.bodySmall,
                     color = Muted,
                     maxLines = 1,
@@ -59,7 +62,7 @@ fun ReminderRow(r: Reminder, boards: List<Board>, onOpen: () -> Unit, onComplete
             IconButton(onClick = onComplete, enabled = !r.done) {
                 Icon(
                     if (r.done) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
-                    "Выполнить: ${r.title}",
+                    tr(StringsRes.string.complete, r.title),
                     tint = if (r.done) Teal else Muted,
                 )
             }
@@ -93,13 +96,13 @@ fun CalendarScreen(
                         else onSelect(selected.minusDays(if (mode == 1) 7 else 1))
                     }
                 ) {
-                    Icon(Icons.Outlined.ChevronLeft, "Предыдущий период")
+                    Icon(Icons.Outlined.ChevronLeft, tr(StringsRes.string.previous_period))
                 }
                 Text(
                     month
                         .atDay(1)
-                        .format(DateTimeFormatter.ofPattern("LLLL yyyy", Ru))
-                        .replaceFirstChar { it.titlecase(Ru) },
+                        .format(DateTimeFormatter.ofPattern("LLLL yyyy", AppLocale))
+                        .replaceFirstChar { it.titlecase(AppLocale) },
                     Modifier.weight(1f),
                     style = MaterialTheme.typography.titleLarge,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -110,30 +113,44 @@ fun CalendarScreen(
                         else onSelect(selected.plusDays(if (mode == 1) 7 else 1))
                     }
                 ) {
-                    Icon(Icons.Outlined.ChevronRight, "Следующий период")
+                    Icon(Icons.Outlined.ChevronRight, tr(StringsRes.string.next_period))
                 }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Месяц", "Неделя", "День").forEachIndexed { i, label ->
-                    FilterChip(
-                        mode == i,
-                        { mode = i },
-                        label = { Text(label) },
-                        modifier = Modifier.weight(1f),
+                listOf(
+                        tr(StringsRes.string.month),
+                        tr(StringsRes.string.week),
+                        tr(StringsRes.string.day),
                     )
-                }
+                    .forEachIndexed { i, label ->
+                        FilterChip(
+                            mode == i,
+                            { mode = i },
+                            label = { Text(label) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
             }
             if (mode < 2) {
                 Row(Modifier.padding(top = 12.dp)) {
-                    listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс").forEach {
-                        Text(
-                            it,
-                            Modifier.weight(1f),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            color = Muted,
-                            style = MaterialTheme.typography.labelMedium,
+                    listOf(
+                            tr(StringsRes.string.mon),
+                            tr(StringsRes.string.tue),
+                            tr(StringsRes.string.wed),
+                            tr(StringsRes.string.thu),
+                            tr(StringsRes.string.fri),
+                            tr(StringsRes.string.sat),
+                            tr(StringsRes.string.sun),
                         )
-                    }
+                        .forEach {
+                            Text(
+                                it,
+                                Modifier.weight(1f),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                color = Muted,
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
                 }
                 val first =
                     if (mode == 0)
@@ -184,7 +201,7 @@ fun CalendarScreen(
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    selected.format(DateTimeFormatter.ofPattern("d MMMM, EEEE", Ru)),
+                    selected.format(DateTimeFormatter.ofPattern("d MMMM, EEEE", AppLocale)),
                     Modifier.weight(1f),
                     style = MaterialTheme.typography.titleMedium,
                 )
@@ -194,7 +211,7 @@ fun CalendarScreen(
                         month = YearMonth.now()
                     }
                 ) {
-                    Text("Сегодня")
+                    Text(tr(StringsRes.string.today))
                 }
             }
         }
@@ -203,8 +220,8 @@ fun CalendarScreen(
             item {
                 EmptyState(
                     Icons.Outlined.EventAvailable,
-                    "День свободен",
-                    "Добавь задачу или напоминание кнопкой +",
+                    tr(StringsRes.string.a_free_day),
+                    tr(StringsRes.string.add_a_task_or_reminder_with_the_button),
                 )
             }
         items(selectedReminders, key = { it.id }) { r ->
@@ -238,17 +255,18 @@ fun TodayScreen(
             ) {
                 Column(Modifier.fillMaxWidth().padding(22.dp)) {
                     Text(
-                        today.format(DateTimeFormatter.ofPattern("d MMMM, EEEE", Ru)),
+                        today.format(DateTimeFormatter.ofPattern("d MMMM, EEEE", AppLocale)),
                         color = Teal,
                         style = MaterialTheme.typography.labelLarge,
                     )
                     Text(
-                        if (due.isEmpty()) "Место для новых планов" else "Сегодня: ${due.size}",
+                        if (due.isEmpty()) tr(StringsRes.string.room_for_new_plans)
+                        else tr(StringsRes.string.today_2, due.size),
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(top = 12.dp),
                     )
                     Text(
-                        "Один небольшой шаг — уже движение вперёд.",
+                        tr(StringsRes.string.even_a_small_step_moves_you_forward),
                         color = Muted,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(top = 8.dp),
@@ -257,21 +275,25 @@ fun TodayScreen(
             }
         }
         if (overdue.isNotEmpty()) {
-            item { SectionLabel("ПРОСРОЧЕНО", "${overdue.size}") }
+            item { SectionLabel(tr(StringsRes.string.overdue), "${overdue.size}") }
             items(overdue, key = { "past-${it.id}" }) { r ->
                 ReminderRow(r, boards, { onOpen(r) }, { onComplete(r) })
             }
         }
-        item { SectionLabel("НА СЕГОДНЯ", "${due.size}") }
+        item { SectionLabel(tr(StringsRes.string.due_today), "${due.size}") }
         if (due.isEmpty())
             item {
-                EmptyState(Icons.Outlined.CheckCircle, "Всё спокойно", "На сегодня напоминаний нет")
+                EmptyState(
+                    Icons.Outlined.CheckCircle,
+                    tr(StringsRes.string.all_clear),
+                    tr(StringsRes.string.no_reminders_for_today),
+                )
             }
         items(due, key = { it.id }) { r ->
             ReminderRow(r, boards, { onOpen(r) }, { onComplete(r) })
         }
         if (upcoming.isNotEmpty()) {
-            item { SectionLabel("ДАЛЬШЕ") }
+            item { SectionLabel(tr(StringsRes.string.upcoming)) }
             items(upcoming, key = { "next-${it.id}" }) { r ->
                 Column {
                     Text(

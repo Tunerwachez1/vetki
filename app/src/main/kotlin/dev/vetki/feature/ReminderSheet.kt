@@ -20,6 +20,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import dev.vetki.data.Reminder
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import dev.vetki.ui.*
 import java.time.*
 import java.time.format.DateTimeFormatter
@@ -95,12 +97,12 @@ fun ReminderSheet(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Text("Напоминание", style = MaterialTheme.typography.headlineSmall)
+                Text(tr(StringsRes.string.reminder), style = MaterialTheme.typography.headlineSmall)
                 OutlinedTextField(
                     title,
                     { title = it },
                     Modifier.fillMaxWidth(),
-                    label = { Text("О чём напомнить?") },
+                    label = { Text(tr(StringsRes.string.what_should_we_remind_you_about)) },
                     shape = RoundedCornerShape(14.dp),
                 )
                 Surface(
@@ -126,7 +128,7 @@ fun ReminderSheet(
                     ) {
                         Icon(Icons.Outlined.CalendarMonth, null, tint = Teal)
                         Text(
-                            date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Ru)),
+                            date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", AppLocale)),
                             Modifier.weight(1f).padding(start = 14.dp),
                         )
                         Icon(Icons.Outlined.ChevronRight, null, tint = Muted)
@@ -169,7 +171,7 @@ fun ReminderSheet(
                             time = d.toLocalTime()
                             error = null
                         },
-                        label = { Text("Через 1 мин") },
+                        label = { Text(tr(StringsRes.string.in_1_min)) },
                     )
                     AssistChip(
                         onClick = {
@@ -178,7 +180,7 @@ fun ReminderSheet(
                             time = d.toLocalTime()
                             error = null
                         },
-                        label = { Text("Через 10 мин") },
+                        label = { Text(tr(StringsRes.string.in_10_min)) },
                     )
                 }
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -187,39 +189,42 @@ fun ReminderSheet(
                         { alarm = false },
                         shape = SegmentedButtonDefaults.itemShape(0, 2),
                     ) {
-                        Text("Уведомление")
+                        Text(tr(StringsRes.string.notification))
                     }
                     SegmentedButton(
                         alarm,
                         { alarm = true },
                         shape = SegmentedButtonDefaults.itemShape(1, 2),
                     ) {
-                        Text("Будильник")
+                        Text(tr(StringsRes.string.alarm))
                     }
                 }
                 Text(
-                    "Мелодия: Спокойная музыка. В режиме будильника играет по кругу, громкость нарастает за 60 секунд.",
+                    tr(StringsRes.string.sound_calm_music_alarm_mode_loops_the_sound_and),
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
                 if (!alarm)
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("Повторять каждые 10 минут")
+                            Text(tr(StringsRes.string.repeat_every_10_minutes))
                             Text(
-                                "До подтверждения выполнения",
+                                tr(StringsRes.string.until_marked_complete),
                                 color = Muted,
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
                         Switch(nag, { nag = it })
                     }
-                Text("Повторение задачи", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    tr(StringsRes.string.task_recurrence),
+                    style = MaterialTheme.typography.labelLarge,
+                )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(
-                            "none" to "Один раз",
-                            "daily" to "Каждый день",
-                            "weekly" to "Каждую неделю",
+                            "none" to tr(StringsRes.string.once),
+                            "daily" to tr(StringsRes.string.every_day),
+                            "weekly" to tr(StringsRes.string.every_week),
                         )
                         .forEach { (key, name) ->
                             FilterChip(repeat == key, { repeat = key }, label = { Text(name) })
@@ -229,21 +234,29 @@ fun ReminderSheet(
                     Surface(shape = RoundedCornerShape(14.dp), color = Panel) {
                         Column(Modifier.padding(14.dp)) {
                             Text(
-                                "Точные сигналы отключены",
+                                tr(StringsRes.string.exact_alarms_are_disabled),
                                 color = Amber,
                                 style = MaterialTheme.typography.titleSmall,
                             )
                             Text(
-                                "Android может задержать напоминание. Разреши точные сигналы в настройках.",
+                                tr(
+                                    StringsRes.string
+                                        .android_may_delay_this_reminder_allow_exact_alarms_in
+                                ),
                                 color = Muted,
                                 style = MaterialTheme.typography.bodySmall,
                             )
-                            TextButton(onClick = onExactAccess) { Text("Открыть настройки") }
+                            TextButton(onClick = onExactAccess) {
+                                Text(tr(StringsRes.string.open_settings))
+                            }
                         }
                     }
                 if (!hasNotifications)
                     Text(
-                        "При сохранении приложение запросит разрешение на уведомления.",
+                        tr(
+                            StringsRes.string
+                                .the_app_will_request_notification_permission_when_you_save
+                        ),
                         color = Amber,
                         style = MaterialTheme.typography.bodySmall,
                     )
@@ -254,8 +267,9 @@ fun ReminderSheet(
                 onClick = {
                     val at =
                         date.atTime(time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                    if (at <= System.currentTimeMillis()) error = "Выбери время в будущем"
-                    else if (title.isBlank()) error = "Добавь название"
+                    if (at <= System.currentTimeMillis())
+                        error = tr(StringsRes.string.choose_a_time_in_the_future)
+                    else if (title.isBlank()) error = tr(StringsRes.string.add_a_title)
                     else {
                         onSave(
                             (initial ?: Reminder(title = title, at = at)).copy(
@@ -276,7 +290,7 @@ fun ReminderSheet(
                 Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
             ) {
-                Text("Сохранить")
+                Text(tr(StringsRes.string.save))
             }
             if (initial != null && onDelete != null)
                 TextButton(
@@ -286,7 +300,10 @@ fun ReminderSheet(
                     },
                     Modifier.fillMaxWidth(),
                 ) {
-                    Text("Удалить напоминание", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        tr(StringsRes.string.delete_reminder),
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
         }
     }

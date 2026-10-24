@@ -12,14 +12,12 @@ android {
             if (providers.gradleProperty("qa").orNull == "true") "dev.vetki.qa" else "dev.vetki"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.2.1"
+        versionCode = 6
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        resValue(
-            "string",
-            "app_name",
-            if (providers.gradleProperty("qa").orNull == "true") "Ветки · проверка" else "Ветки",
-        )
+        manifestPlaceholders["appLabel"] =
+            if (providers.gradleProperty("qa").orNull == "true") "Vetki · QA"
+            else "@string/app_name"
     }
     buildFeatures {
         compose = true
@@ -43,6 +41,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":i18n"))
     implementation(project(":core"))
     implementation(project(":data"))
     implementation(project(":canvas"))

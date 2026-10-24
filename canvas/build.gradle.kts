@@ -16,6 +16,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":i18n"))
     implementation(project(":core"))
     implementation(platform("androidx.compose:compose-bom:2025.06.01"))
     implementation("androidx.compose.material3:material3")

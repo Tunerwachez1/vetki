@@ -15,6 +15,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.vetki.core.*
 import dev.vetki.data.Note
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import dev.vetki.ui.*
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -47,20 +49,26 @@ fun NotesScreen(
             query,
             { query = it },
             Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-            placeholder = { Text("Найти заметку или папку") },
+            placeholder = { Text(tr(StringsRes.string.find_a_note_or_folder)) },
             leadingIcon = { Icon(Icons.Outlined.Search, null) },
             singleLine = true,
             shape = RoundedCornerShape(16.dp),
         )
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp)) {
-            item { SectionLabel("МОЁ ПРОСТРАНСТВО", "${notes.count { !it.folder }} заметок") }
+            item {
+                SectionLabel(
+                    tr(StringsRes.string.my_space_2),
+                    tr(StringsRes.string.notes_2, notes.count { !it.folder }),
+                )
+            }
             if (rows.isEmpty())
                 item {
                     EmptyState(
                         Icons.Outlined.FolderOpen,
-                        "Здесь пока пусто",
-                        if (query.isBlank()) "Создай заметку или папку кнопкой +"
-                        else "Попробуй другое название",
+                        tr(StringsRes.string.nothing_here_yet),
+                        if (query.isBlank())
+                            tr(StringsRes.string.create_a_note_or_folder_with_the_button)
+                        else tr(StringsRes.string.try_a_different_title),
                     )
                 }
             items(rows, key = { it.entry.id }) { row ->
@@ -110,7 +118,7 @@ fun NotesScreen(
                     IconButton(onClick = { onActions(note) }) {
                         Icon(
                             Icons.Outlined.MoreHoriz,
-                            "Действия: ${note.title}",
+                            tr(StringsRes.string.actions, note.title),
                             Modifier.size(19.dp),
                             tint = Muted,
                         )
@@ -120,7 +128,7 @@ fun NotesScreen(
             if (query.isBlank() && notes.any { !it.folder }) {
                 item {
                     Spacer(Modifier.height(20.dp))
-                    SectionLabel("НЕДАВНИЕ")
+                    SectionLabel(tr(StringsRes.string.recent))
                 }
                 items(notes.filter { !it.folder }.take(3), key = { "recent-${it.id}" }) { note ->
                     Surface(
@@ -138,7 +146,9 @@ fun NotesScreen(
                             Column(Modifier.weight(1f)) {
                                 Text(note.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(
-                                    note.body.replace("#", "").trim().ifBlank { "Пустая заметка" },
+                                    note.body.replace("#", "").trim().ifBlank {
+                                        tr(StringsRes.string.empty_note)
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Muted,
                                     maxLines = 1,
@@ -161,7 +171,7 @@ fun NoteEditor(note: Note, onSave: (Note) -> Unit, modifier: Modifier = Modifier
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp)
     ) {
         Text(
-            "ЗАМЕТКА · MARKDOWN",
+            tr(StringsRes.string.note_markdown),
             style = MaterialTheme.typography.labelSmall,
             color = Teal,
             modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
@@ -170,10 +180,12 @@ fun NoteEditor(note: Note, onSave: (Note) -> Unit, modifier: Modifier = Modifier
             title,
             {
                 title = it
-                onSave(note.copy(title = it.ifBlank { "Без названия" }, body = body))
+                onSave(
+                    note.copy(title = it.ifBlank { tr(StringsRes.string.untitled) }, body = body)
+                )
             },
             Modifier.fillMaxWidth(),
-            placeholder = { Text("Название") },
+            placeholder = { Text(tr(StringsRes.string.title)) },
             textStyle =
                 MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
             colors =
@@ -189,10 +201,12 @@ fun NoteEditor(note: Note, onSave: (Note) -> Unit, modifier: Modifier = Modifier
             body,
             {
                 body = it
-                onSave(note.copy(title = title.ifBlank { "Без названия" }, body = it))
+                onSave(
+                    note.copy(title = title.ifBlank { tr(StringsRes.string.untitled) }, body = it)
+                )
             },
             Modifier.fillMaxWidth().heightIn(min = 400.dp),
-            placeholder = { Text("Начни писать…\n\n# Заголовок\n- Список\n- [ ] Задача") },
+            placeholder = { Text(tr(StringsRes.string.start_writing_n_n_heading_n_list_n_task)) },
             textStyle = MaterialTheme.typography.bodyLarge,
             colors =
                 TextFieldDefaults.colors(
@@ -203,7 +217,7 @@ fun NoteEditor(note: Note, onSave: (Note) -> Unit, modifier: Modifier = Modifier
                 ),
         )
         Text(
-            "Изменения сохраняются автоматически",
+            tr(StringsRes.string.changes_are_saved_automatically),
             style = MaterialTheme.typography.labelSmall,
             color = Muted,
             modifier = Modifier.padding(vertical = 20.dp),

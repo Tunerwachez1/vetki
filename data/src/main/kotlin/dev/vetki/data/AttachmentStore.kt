@@ -8,6 +8,8 @@ import android.provider.OpenableColumns
 import android.util.LruCache
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import java.io.File
 import java.util.UUID
 
@@ -21,10 +23,10 @@ class AttachmentStore(private val context: Context) {
         }
 
     fun file(uri: String): File {
-        require(uri.startsWith("attachment://")) { "Неизвестный формат вложения" }
+        require(uri.startsWith("attachment://")) { tr(StringsRes.string.unknown_attachment_format) }
         val name = uri.removePrefix("attachment://")
         require(name.matches(Regex("[a-f0-9-]{36}(\\.[a-zA-Z0-9]{1,10})?"))) {
-            "Некорректное имя вложения"
+            tr(StringsRes.string.invalid_attachment_name)
         }
         return File(directory, name)
     }
@@ -34,7 +36,8 @@ class AttachmentStore(private val context: Context) {
         val display =
             context.contentResolver
                 .query(source, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
-                ?.use { if (it.moveToFirst()) it.getString(0) else null } ?: "Файл"
+                ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                ?: tr(StringsRes.string.file)
         val extension =
             MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)?.takeIf {
                 it.matches(Regex("[a-zA-Z0-9]{1,10}"))
@@ -50,11 +53,11 @@ class AttachmentStore(private val context: Context) {
                         val count = input.read(buffer)
                         if (count < 0) break
                         size += count
-                        require(size <= MAX_FILE) { "Выбери файл до 8 МБ" }
+                        require(size <= MAX_FILE) { tr(StringsRes.string.choose_a_file_up_to_8_mb) }
                         output.write(buffer, 0, count)
                     }
                 }
-            } ?: error("Не удалось открыть файл")
+            } ?: error(tr(StringsRes.string.could_not_open_the_file))
         } catch (e: Exception) {
             target.delete()
             throw e

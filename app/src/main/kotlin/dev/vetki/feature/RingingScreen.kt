@@ -13,6 +13,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import dev.vetki.reminders.*
 import dev.vetki.ui.*
 import kotlin.math.roundToInt
@@ -44,18 +46,23 @@ fun RingingScreen(alarm: RingingAlarm) {
                     )
                 }
                 Spacer(Modifier.height(32.dp))
-                Text("БУДИЛЬНИК", color = Teal, style = MaterialTheme.typography.labelLarge)
+                Text(
+                    tr(StringsRes.string.alarm_2),
+                    color = Teal,
+                    style = MaterialTheme.typography.labelLarge,
+                )
                 Text(
                     alarm.title,
                     Modifier.padding(vertical = 20.dp),
                     style = MaterialTheme.typography.headlineMedium,
                     textAlign = TextAlign.Center,
                 )
-                if (alarm.ids.size > 1) Text("Ещё напоминаний: ${alarm.ids.size-1}", color = Muted)
+                if (alarm.ids.size > 1)
+                    Text(tr(StringsRes.string.more_reminders, alarm.ids.size - 1), color = Muted)
                 Text(
                     alarm.error
-                        ?: if (alarm.playing) "Спокойная музыка играет по кругу"
-                        else "Ожидает доступ к звуку",
+                        ?: if (alarm.playing) tr(StringsRes.string.calm_music_is_playing_on_repeat)
+                        else tr(StringsRes.string.waiting_for_audio_access),
                     color = Muted,
                     textAlign = TextAlign.Center,
                 )
@@ -67,13 +74,13 @@ fun RingingScreen(alarm: RingingAlarm) {
                     trackColor = Panel,
                 )
                 Text(
-                    "Громкость мелодии: ${(alarm.gain*100).roundToInt()}%",
+                    tr(StringsRes.string.sound_volume, (alarm.gain * 100).roundToInt()),
                     Modifier.padding(top = 12.dp),
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Text(
-                    "Плавное нарастание за 60 секунд",
+                    tr(StringsRes.string.gradually_increases_over_60_seconds),
                     color = Muted,
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -83,7 +90,7 @@ fun RingingScreen(alarm: RingingAlarm) {
                     Modifier.fillMaxWidth().height(60.dp),
                     shape = RoundedCornerShape(18.dp),
                 ) {
-                    Text("Остановить")
+                    Text(tr(StringsRes.string.stop))
                 }
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(
@@ -91,7 +98,7 @@ fun RingingScreen(alarm: RingingAlarm) {
                     Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(18.dp),
                 ) {
-                    Text("Отложить на 10 минут")
+                    Text(tr(StringsRes.string.snooze_for_10_minutes))
                 }
             }
         }

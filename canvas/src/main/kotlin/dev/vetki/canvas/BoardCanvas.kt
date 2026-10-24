@@ -21,6 +21,8 @@ import androidx.compose.ui.platform.*
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.*
 import dev.vetki.core.*
+import dev.vetki.i18n.R as StringsRes
+import dev.vetki.i18n.tr
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -173,7 +175,7 @@ fun BoardCanvas(
         Canvas(
             Modifier.fillMaxSize()
                 .onSizeChanged { dimensions = Size(it.width.toFloat(), it.height.toFloat()) }
-                .semantics { contentDescription = "Холст" }
+                .semantics { contentDescription = tr(StringsRes.string.canvas) }
                 .canvasGestures(
                     boardId,
                     ::hit,
@@ -434,12 +436,12 @@ fun BoardCanvas(
                 Modifier.offset { IntOffset(top.x.roundToInt(), top.y.roundToInt()) }
                     .size((card.width * zoom).dp, (card.height * zoom).dp)
                     .semantics {
-                        contentDescription = "Карточка: ${card.title}"
+                        contentDescription = tr(StringsRes.string.card_2, card.title)
                         role = Role.Button
                         onClick(
                             label =
-                                if (connecting != null) "Соединить с карточкой"
-                                else "Открыть карточку"
+                                if (connecting != null) tr(StringsRes.string.connect_to_card)
+                                else tr(StringsRes.string.open_card)
                         ) {
                             selectCard(card.id)
                             true
@@ -458,10 +460,10 @@ fun BoardCanvas(
                         val selected = connecting == (card.id to side)
                         val sideLabel =
                             when (side) {
-                                "top" -> "сверху"
-                                "bottom" -> "снизу"
-                                "left" -> "слева"
-                                else -> "справа"
+                                "top" -> tr(StringsRes.string.at_the_top)
+                                "bottom" -> tr(StringsRes.string.at_the_bottom)
+                                "left" -> tr(StringsRes.string.on_the_left)
+                                else -> tr(StringsRes.string.on_the_right)
                             }
                         Box(
                             Modifier.offset {
@@ -472,7 +474,8 @@ fun BoardCanvas(
                                 }
                                 .size(32.dp)
                                 .semantics {
-                                    contentDescription = "Соединить $sideLabel: ${card.title}"
+                                    contentDescription =
+                                        tr(StringsRes.string.connect, sideLabel, card.title)
                                 }
                                 .clickable(role = Role.Button) {
                                     connecting = if (selected) null else card.id to side
@@ -502,13 +505,18 @@ fun BoardCanvas(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(start = 12.dp),
                 ) {
-                    Text("Выбери другую карточку", style = MaterialTheme.typography.labelMedium)
-                    TextButton(onClick = { connecting = null }) { Text("Отмена") }
+                    Text(
+                        tr(StringsRes.string.choose_another_card),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                    TextButton(onClick = { connecting = null }) {
+                        Text(tr(StringsRes.string.cancel))
+                    }
                 }
             }
         if (cards.isEmpty())
             Text(
-                "Нажми на свободное место,\nчтобы добавить первую карточку",
+                tr(StringsRes.string.tap_an_empty_area_nto_add_your_first_card),
                 Modifier.align(Alignment.Center).padding(50.dp),
                 color = Color(0xFF9A9E9B),
                 style = MaterialTheme.typography.bodyMedium,
@@ -535,7 +543,7 @@ fun BoardCanvas(
                 ) {
                     Text("−")
                 }
-                TextButton(onClick = { fit() }) { Text("Обзор") }
+                TextButton(onClick = { fit() }) { Text(tr(StringsRes.string.fit_all)) }
             }
         }
         FilledTonalIconButton(
@@ -551,7 +559,7 @@ fun BoardCanvas(
                 shape = MaterialTheme.shapes.medium,
             ) {
                 Text(
-                    "Только просмотр",
+                    tr(StringsRes.string.read_only),
                     Modifier.padding(10.dp),
                     style = MaterialTheme.typography.labelSmall,
                     color = Color(0xFFC5B48B),
